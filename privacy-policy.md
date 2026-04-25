@@ -1,71 +1,82 @@
-# Privacy Policy
+# Privacy Policy for note TOC Exporter
 
-## note TOC Exporter
+Last updated: 2026-04-25  
+Version: 2.0.0
 
-Last updated: 2026
+## Overview
 
-### Overview
+note TOC Exporter is a Chrome extension that generates a table of contents from note.com public article pages and note editor pages.
 
-**note TOC Exporter** is a Chrome extension that generates a table of contents (TOC) from headings on note.com articles.
+The extension processes page headings locally in the browser. It does not collect, transmit, sell, or share user data.
 
-This extension is designed to operate entirely within the user's browser and does not collect or transmit personal information.
+## Data collection
 
----
+This extension does not collect personal information.
 
-## Data Collection
+It does not collect:
 
-This extension **does not collect, store, or transmit any personal data**.
+- Names
+- Email addresses
+- Account identifiers
+- Authentication information
+- Browsing history
+- Page content for external transmission
+- Generated table of contents output for external transmission
 
-No user information, browsing history, or page content is sent to external servers.
+## Local processing
 
----
+The extension reads the currently active supported page only when the user invokes the extension.
 
-## Data Processing
+Supported pages are:
 
-All processing is performed **locally within the user's browser**.
+- https://note.com/*
+- https://editor.note.com/*
 
-The extension only reads the structure of the currently open note.com page (such as heading elements) in order to generate a table of contents.
+The extension extracts headings and related page metadata when available, such as title, URL, author, summary, tags, publish date, and eyecatch URL. This processing is performed locally in the user's browser.
 
----
+## Local storage
 
-## Permissions Usage
+The extension may store the following information locally using Chrome storage:
 
-### activeTab
+- User settings
+- Output format preferences
+- Templates
+- Profiles
+- Recent output history
+- Diagnostic preferences
 
-Used to access the currently active tab when the user triggers the extension, allowing it to read heading elements from the page.
+This information is stored locally in the browser and is not sent to external servers by the extension.
 
-### scripting
+## Clipboard access
 
-Used to execute the script that extracts headings and generates the table of contents on the page.
+The extension uses clipboard access only when the user copies generated TOC output.
 
-### clipboardWrite
+## External communication
 
-Used to copy the generated table of contents to the user's clipboard when the user clicks the copy button.
+The extension does not communicate with external APIs or remote servers.
 
-### storage
+It does not use:
 
-Used to store local settings if configuration features are added in the future. Data is stored only in the user's browser.
+- Analytics services
+- Advertising SDKs
+- Tracking pixels
+- Remote code execution
+- External AI services
 
----
+## Host permissions
 
-## Third-Party Services
+The extension limits host access to note.com and editor.note.com pages required for its TOC generation functionality.
 
-This extension **does not use any third-party analytics, tracking tools, or external APIs**.
+## Data sharing
 
----
+The extension does not sell, transfer, or share user data with third parties.
 
-## Data Sharing
+## Changes to this policy
 
-No user data is shared with any third parties.
-
----
-
-## Changes to This Policy
-
-This privacy policy may be updated if the functionality of the extension changes.
-
----
+This privacy policy may be updated when the extension's functionality changes.
 
 ## Contact
 
-If you have any questions about this policy, please contact the developer via the repository issues page.
+For issues or questions, use the GitHub repository issue tracker:
+
+https://github.com/daccot/note-TOC-Exporter/issues

@@ -1,6 +1,30 @@
-﻿node_modules/
+# Dependencies
+node_modules/
+
+# Build caches and test output
+test-results/
+playwright-report/
+coverage/
+.nyc_output/
+
+# Local logs and temporary files
+logs/
 *.log
 *.tmp
+*.temp
+
+# Packaged extension artifacts
 *.zip
 *.crx
+*.pem
+
+# OS / editor files
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.*
+!.env.example
