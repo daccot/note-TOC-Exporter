@@ -21,14 +21,17 @@
       return;
     }
     try {
-      await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ["dist/content.js"]
-      });
+      await ensureContentScript(tab.id);
       await chrome.tabs.sendMessage(tab.id, { type: "RUN_NOTE_TOC_EXPORTER", optionsOverride });
     } catch (error) {
       console.error(LOG_PREFIX, "Failed to send message to content script", error);
     }
+  }
+  async function ensureContentScript(tabId) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["dist/content.js"]
+    });
   }
   async function getActiveTab() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -55,6 +58,20 @@
       });
       return true;
     }
+    if (message?.type === "ENSURE_NOTE_TOC_CONTENT_SCRIPT") {
+      void (async () => {
+        const tabId = Number(message.tabId);
+        if (!Number.isFinite(tabId)) {
+          sendResponse({ ok: false, error: "tabId \u304C\u4E0D\u6B63\u3067\u3059\u3002" });
+          return;
+        }
+        await ensureContentScript(tabId);
+        sendResponse({ ok: true });
+      })().catch((error) => {
+        sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
+      });
+      return true;
+    }
     if (message?.type === "GET_NOTE_TOC_ACTIVE_TAB_STATE") {
       void getActiveTab().then((tab) => {
         const url = tab?.url ?? "";
@@ -70,4 +87,9 @@
     }
     return false;
   });
+  if (chrome.sidePanel?.setPanelBehavior) {
+    void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
+      console.warn(LOG_PREFIX, "Failed to set side panel behavior", error);
+    });
+  }
 })();

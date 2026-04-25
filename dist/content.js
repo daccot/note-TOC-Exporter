@@ -648,8 +648,61 @@ ${items.join("\n")}
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(href);
+    }, isSupportedSidePanelPage = function() {
+      return /^https:\/\/note\.com\//.test(location.href) || /^https:\/\/editor\.note\.com\//.test(location.href);
+    }, getHeadingElementByTocItem = function(item) {
+      if (item.id) {
+        const direct = document.getElementById(item.id);
+        if (direct instanceof HTMLElement) return direct;
+      }
+      const candidates = Array.from(document.querySelectorAll(item.level));
+      return candidates.find((element) => (element.textContent ?? "").trim() === item.text) ?? null;
+    }, getActiveHeadingIdFromViewport = function(items) {
+      const viewportOffset = 96;
+      let current = null;
+      for (const item of items) {
+        const element = getHeadingElementByTocItem(item);
+        if (!element) continue;
+        const rect = element.getBoundingClientRect();
+        if (rect.top <= viewportOffset) current = item.id;
+        else break;
+      }
+      return current ?? items[0]?.id ?? null;
+    }, notifySidePanelActiveHeading = function() {
+      if (sidePanelLastItems.length === 0) return;
+      const nextActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+      if (nextActiveId === sidePanelActiveId) return;
+      sidePanelActiveId = nextActiveId;
+      void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
+    }, attachSidePanelScrollSync = function() {
+      if (sidePanelScrollListenerAttached) return;
+      sidePanelScrollListenerAttached = true;
+      let ticking = false;
+      window.addEventListener("scroll", () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(() => {
+          ticking = false;
+          notifySidePanelActiveHeading();
+        });
+      }, { passive: true });
+    }, attachSidePanelMutationObserver = function() {
+      if (sidePanelMutationObserver) return;
+      sidePanelMutationObserver = new MutationObserver(() => notifySidePanelActiveHeading());
+      sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
+    }, jumpToSidePanelItem = function(id, index) {
+      let target = null;
+      if (id) target = document.getElementById(id);
+      if (!target && Number.isFinite(index ?? NaN)) {
+        const item = sidePanelLastItems[index];
+        if (item) target = getHeadingElementByTocItem(item);
+      }
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      sidePanelActiveId = target.id || id;
+      void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
     };
-    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText;
+    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText, isSupportedSidePanelPage2 = isSupportedSidePanelPage, getHeadingElementByTocItem2 = getHeadingElementByTocItem, getActiveHeadingIdFromViewport2 = getActiveHeadingIdFromViewport, notifySidePanelActiveHeading2 = notifySidePanelActiveHeading, attachSidePanelScrollSync2 = attachSidePanelScrollSync, attachSidePanelMutationObserver2 = attachSidePanelMutationObserver, jumpToSidePanelItem2 = jumpToSidePanelItem;
     window.__NOTE_TOC_EXPORTER_BOOTED__ = true;
     let isAutoRunning = false;
     async function copyText(text) {
@@ -740,15 +793,61 @@ note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3082\u3042\u308B\u3055
       if (!options.autoRun) return;
       await runExporter(true);
     }
-    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-      if (message?.type !== "RUN_NOTE_TOC_EXPORTER") {
-        return false;
+    let sidePanelLastItems = [];
+    let sidePanelActiveId = null;
+    let sidePanelScrollListenerAttached = false;
+    let sidePanelMutationObserver = null;
+    async function getSidePanelState() {
+      if (!isSupportedSidePanelPage()) {
+        return { ok: true, supported: false, url: location.href, title: document.title, activeId: null, items: [] };
       }
-      void runExporter(false, message.optionsOverride).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: String(error) }));
-      return true;
+      try {
+        const result = await buildExportResult();
+        sidePanelLastItems = result.tocData;
+        attachSidePanelScrollSync();
+        attachSidePanelMutationObserver();
+        sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+        return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
+      } catch (error) {
+        return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
+      }
+    }
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      if (message?.type === "RUN_NOTE_TOC_EXPORTER") {
+        void runExporter(false, message.optionsOverride).then(() => sendResponse({ ok: true })).catch((error) => sendResponse({ ok: false, error: String(error) }));
+        return true;
+      }
+      if (message?.type === "GET_NOTE_TOC_SIDE_PANEL_STATE") {
+        void getSidePanelState().then((state) => sendResponse(state)).catch((error) => sendResponse({
+          ok: false,
+          supported: isSupportedSidePanelPage(),
+          url: location.href,
+          title: document.title,
+          activeId: null,
+          items: [],
+          error: error instanceof Error ? error.message : String(error)
+        }));
+        return true;
+      }
+      if (message?.type === "NOTE_TOC_SIDE_PANEL_JUMP_TO") {
+        jumpToSidePanelItem(
+          typeof message.id === "string" ? message.id : null,
+          typeof message.index === "number" ? message.index : null
+        );
+        sendResponse({ ok: true });
+        return true;
+      }
+      return false;
     });
     void maybeAutoRun();
   }
   var jumpToHeading2;
   var downloadText2;
+  var isSupportedSidePanelPage2;
+  var getHeadingElementByTocItem2;
+  var getActiveHeadingIdFromViewport2;
+  var notifySidePanelActiveHeading2;
+  var attachSidePanelScrollSync2;
+  var attachSidePanelMutationObserver2;
+  var jumpToSidePanelItem2;
 })();
