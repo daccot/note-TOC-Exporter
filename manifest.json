@@ -15,7 +15,7 @@
                              "https://editor.note.com/*"
                          ],
     "background":  {
-                       "service_worker":  "dist/background.js"
+                       "service_worker":  "background.js"
                    },
     "action":  {
                    "default_title":  "note TOC Exporter",
