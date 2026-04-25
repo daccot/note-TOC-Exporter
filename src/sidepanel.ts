@@ -29,10 +29,27 @@ const openModalButton = document.getElementById('openModal') as HTMLButtonElemen
 let currentTabId: number | null = null;
 let activeId: string | null = null;
 
-function setStatus(message: string, variant: 'normal' | 'warn' = 'normal'): void {
-  statusEl.textContent = message;
-  statusEl.className = variant === 'warn' ? 'status warn' : 'status';
+function setStatus(message: string, variant: 'normal' | 'warn' | 'loading' = 'normal'): void {
+  statusEl.className = variant === 'warn' ? 'status warn' : variant === 'loading' ? 'status loading' : 'status';
   statusEl.hidden = false;
+
+  if (variant === 'loading') {
+    statusEl.replaceChildren();
+
+    const spinner = document.createElement('img');
+    spinner.className = 'loading-spinner';
+    spinner.src = chrome.runtime.getURL('assets/loading-spinner.svg');
+    spinner.alt = 'Loading';
+
+    const text = document.createElement('span');
+    text.className = 'loading-text';
+    text.textContent = message;
+
+    statusEl.append(spinner, text);
+    return;
+  }
+
+  statusEl.textContent = message;
 }
 
 function clearToc(): void {
@@ -117,7 +134,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
 
 async function requestState(): Promise<void> {
   clearToc();
-  setStatus('TOCを読み込んでいます。');
+  setStatus('TOCを読み込んでいます。', 'loading');
 
   const tab = await getActiveTab();
   if (!tab?.id) {

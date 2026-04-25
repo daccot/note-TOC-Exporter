@@ -9,9 +9,21 @@
   var currentTabId = null;
   var activeId = null;
   function setStatus(message, variant = "normal") {
-    statusEl.textContent = message;
-    statusEl.className = variant === "warn" ? "status warn" : "status";
+    statusEl.className = variant === "warn" ? "status warn" : variant === "loading" ? "status loading" : "status";
     statusEl.hidden = false;
+    if (variant === "loading") {
+      statusEl.replaceChildren();
+      const spinner = document.createElement("img");
+      spinner.className = "loading-spinner";
+      spinner.src = chrome.runtime.getURL("assets/loading-spinner.svg");
+      spinner.alt = "Loading";
+      const text = document.createElement("span");
+      text.className = "loading-text";
+      text.textContent = message;
+      statusEl.append(spinner, text);
+      return;
+    }
+    statusEl.textContent = message;
   }
   function clearToc() {
     tocEl.hidden = true;
@@ -82,7 +94,7 @@ ${count} headings`;
   }
   async function requestState() {
     clearToc();
-    setStatus("TOC\u3092\u8AAD\u307F\u8FBC\u3093\u3067\u3044\u307E\u3059\u3002");
+    setStatus("TOC\u3092\u8AAD\u307F\u8FBC\u3093\u3067\u3044\u307E\u3059\u3002", "loading");
     const tab = await getActiveTab();
     if (!tab?.id) {
       currentTabId = null;

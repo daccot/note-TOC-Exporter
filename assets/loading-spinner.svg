@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="Loading">
+  <defs>
+    <linearGradient id="noteTocSpinnerGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="55%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="noteTocSpinnerShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1e3a8a" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <style>
+    .ring {
+      transform-origin: 48px 48px;
+      animation: spin 1.05s linear infinite;
+    }
+    .dot {
+      transform-origin: 48px 48px;
+      animation: pulse 1.05s ease-in-out infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: .42; transform: scale(.92); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+  </style>
+  <circle cx="48" cy="48" r="36" fill="#eff6ff" filter="url(#noteTocSpinnerShadow)"/>
+  <g class="ring">
+    <path d="M48 16a32 32 0 1 1-22.63 9.37" fill="none" stroke="url(#noteTocSpinnerGradient)" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="25.37" cy="25.37" r="4.5" fill="#2563eb"/>
+  </g>
+  <g class="dot">
+    <rect x="34" y="34" width="28" height="28" rx="8" fill="#ffffff"/>
+    <path d="M39 57V39h4.2l8.1 11.1V39H56v18h-4.1l-8.2-11.2V57H39z" fill="#1d4ed8"/>
+  </g>
+</svg>
