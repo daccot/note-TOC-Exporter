@@ -43,7 +43,7 @@
       legacyModal: "\u5F93\u6765\u30E2\u30FC\u30C0\u30EB",
       unsupportedPage: "note.com \u307E\u305F\u306F editor.note.com \u306E\u8A18\u4E8B\u30FB\u7DE8\u96C6\u753B\u9762\u3092\u958B\u304F\u3068\u3001\u3053\u3053\u306BTOC\u304C\u8868\u793A\u3055\u308C\u307E\u3059\u3002",
       noActiveTab: "\u30A2\u30AF\u30C6\u30A3\u30D6\u30BF\u30D6\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
-      noTocItems: "TOC\u9805\u76EE\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u898B\u51FA\u3057\u304C\u5B58\u5728\u3059\u308B\u8A18\u4E8B\u3067\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+      noTocItems: "TOC\u9805\u76EE\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u672C\u6587\u5185\u306E\u898B\u51FA\u3057\u3082\u691C\u51FA\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
       failedToLoad: "\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       failedToJump: "\u30B8\u30E3\u30F3\u30D7\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       failedToOpenLegacy: "\u5F93\u6765\u30E2\u30FC\u30C0\u30EB\u306E\u8D77\u52D5\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
@@ -55,7 +55,9 @@
       topOfPage: "\u4E00\u756A\u4E0A\u3078",
       bottomOfPage: "\u4E00\u756A\u4E0B\u3078",
       missingJumpId: "\u30B8\u30E3\u30F3\u30D7ID\u672A\u691C\u51FA",
-      headings: "headings"
+      headings: "headings",
+      generatedFromHeadings: "\u672C\u6587\u306E\u898B\u51FA\u3057\u304B\u3089TOC\u3092\u751F\u6210\u3057\u307E\u3057\u305F\u3002",
+      copyNextAction: "\u5FC5\u8981\u306A\u5834\u6240\u3067 Ctrl+V \u3092\u62BC\u3057\u3066\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044\u3002"
     },
     en: {
       panelTitle: "note TOC Panel",
@@ -65,7 +67,7 @@
       legacyModal: "Legacy modal",
       unsupportedPage: "Open a note.com article or editor page to display the TOC here.",
       noActiveTab: "No active tab was found.",
-      noTocItems: "No TOC items were found. Please try again on an article with headings.",
+      noTocItems: "No TOC items or document headings were found.",
       failedToLoad: "Failed to load",
       failedToJump: "Failed to jump",
       failedToOpenLegacy: "Failed to open the legacy modal",
@@ -77,7 +79,9 @@
       topOfPage: "Top of page",
       bottomOfPage: "Bottom of page",
       missingJumpId: "No jump ID detected",
-      headings: "headings"
+      headings: "headings",
+      generatedFromHeadings: "Generated a TOC from document headings.",
+      copyNextAction: "Press Ctrl+V where you want to paste it."
     }
   };
   function resolveLanguage(language, browserLanguage = navigator.language) {
@@ -138,13 +142,16 @@
   var currentItems = [];
   var rawItems = [];
   var currentOptions = DEFAULT_OPTIONS;
-  var collapsedH2Ids = /* @__PURE__ */ new Set();
-  var userToggledCollapse = false;
+  var expandedH2Ids = /* @__PURE__ */ new Set();
+  var manuallyChangedExpansion = false;
   function isSupportedUrl(url) {
     return /^https:\/\/note\.com\//.test(url ?? "") || /^https:\/\/editor\.note\.com\//.test(url ?? "");
   }
   function msg(key) {
     return t(currentOptions.uiLanguage, key);
+  }
+  function normalizeError(error) {
+    return error instanceof Error ? error.message : String(error);
   }
   function applyWallpaperTheme() {
     const root = document.documentElement;
@@ -160,9 +167,6 @@
     }
     root.style.setProperty("--app-wallpaper", `url("${chrome.runtime.getURL("assets/default-wallpaper.jpg")}")`);
   }
-  function normalizeError(error) {
-    return error instanceof Error ? error.message : String(error);
-  }
   async function refreshOptions() {
     currentOptions = mergeOptions(await loadOptions().catch(() => DEFAULT_OPTIONS));
     applyWallpaperTheme();
@@ -174,7 +178,7 @@
     clearSelectionButton.textContent = msg("clearSelection");
   }
   function setStatus(message, variant = "normal") {
-    statusEl.className = variant === "warn" ? "status warn" : variant === "loading" ? "status loading" : "status";
+    statusEl.className = variant === "warn" ? "status warn" : variant === "loading" ? "status loading" : variant === "ok" ? "status ok" : "status";
     statusEl.hidden = false;
     if (variant === "loading") {
       statusEl.replaceChildren();
@@ -217,10 +221,19 @@
       return item;
     });
   }
-  function filterByOptions(items) {
-    const annotated = annotateHierarchy(items);
-    if (currentOptions.showSubHeadings) return annotated;
-    return annotated.filter((item) => item.level === "h2");
+  function getH2Key(item) {
+    if (item.level !== "h2") return item.parentH2Id ?? null;
+    return item.id ?? `h2-index-${item.index}`;
+  }
+  function shouldShowItem(item) {
+    if (item.level === "top" || item.level === "bottom") return true;
+    if (item.level === "h2") return true;
+    if (currentOptions.showSubHeadings) return true;
+    const parent = item.parentH2Id ?? "";
+    return Boolean(parent && expandedH2Ids.has(parent));
+  }
+  function visibleContentItems(items) {
+    return annotateHierarchy(items).filter(shouldShowItem);
   }
   function setMeta(title, url, count) {
     metaEl.textContent = `${title || "Untitled note"}
@@ -228,7 +241,7 @@ ${count} ${msg("headings")}`;
     metaEl.title = url;
   }
   function getRenderableItems(items) {
-    const filtered = filterByOptions(items);
+    const filtered = visibleContentItems(items);
     if (!currentOptions.showTopBottomItems) return filtered;
     return [
       { index: -1, level: "top", text: msg("topOfPage"), id: "__NOTE_TOC_TOP__", source: "system" },
@@ -240,34 +253,20 @@ ${count} ${msg("headings")}`;
     if (item.level === "top" || item.level === "bottom") return "#eef2ff";
     return currentOptions.headingColors[item.level] ?? DEFAULT_OPTIONS.headingColors[item.level];
   }
-  function getH2Key(item) {
-    if (item.level !== "h2") return item.parentH2Id ?? null;
-    return item.id ?? `h2-index-${item.index}`;
-  }
-  function initializeCollapse(items) {
-    if (userToggledCollapse || !currentOptions.enableH2Collapse || !currentOptions.collapseH2ByDefault) return;
-    collapsedH2Ids = new Set(
-      items.filter((item) => item.level === "h2" && item.hasChildren).map((item) => item.id ?? `h2-index-${item.index}`)
+  function initializeExpansion(items) {
+    if (manuallyChangedExpansion) return;
+    if (!currentOptions.enableH2Collapse) return;
+    if (!currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault) return;
+    const h2Items = annotateHierarchy(items).filter((item) => item.level === "h2" && item.hasChildren);
+    expandedH2Ids = new Set(
+      h2Items.filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault).map((item) => item.id ?? `h2-index-${item.index}`)
     );
   }
-  function applyCollapseVisibility() {
-    const rows = Array.from(tocEl.querySelectorAll(".toc-row"));
-    for (const row of rows) {
-      const parentH2Id = row.dataset.parentH2Id ?? "";
-      const hidden = Boolean(parentH2Id) && collapsedH2Ids.has(parentH2Id);
-      row.classList.toggle("hidden-by-collapse", hidden);
-    }
-    tocEl.querySelectorAll('[data-role="collapse-toggle"]').forEach((button) => {
-      const h2Id = button.dataset.h2Id ?? "";
-      button.textContent = collapsedH2Ids.has(h2Id) ? "+" : "\u2212";
-      button.title = collapsedH2Ids.has(h2Id) ? "Expand" : "Collapse";
-    });
-  }
-  function toggleCollapse(h2Id) {
-    userToggledCollapse = true;
-    if (collapsedH2Ids.has(h2Id)) collapsedH2Ids.delete(h2Id);
-    else collapsedH2Ids.add(h2Id);
-    applyCollapseVisibility();
+  function toggleExpansion(h2Id) {
+    manuallyChangedExpansion = true;
+    if (expandedH2Ids.has(h2Id)) expandedH2Ids.delete(h2Id);
+    else expandedH2Ids.add(h2Id);
+    renderToc(rawItems, null, true);
   }
   function updateActiveHeading(nextActiveId) {
     let activeParentH2Id = null;
@@ -290,10 +289,11 @@ ${count} ${msg("headings")}`;
       if (isActive) button.scrollIntoView({ block: "nearest" });
     }
   }
-  function renderToc(items, nextActiveId) {
+  function renderToc(items, nextActiveId, preserveExpansion = false) {
     tocEl.replaceChildren();
+    rawItems = items;
+    if (!preserveExpansion) initializeExpansion(items);
     currentItems = getRenderableItems(items);
-    initializeCollapse(currentItems);
     if (currentItems.length === 0) {
       clearToc();
       setStatus(msg("noTocItems"), "warn");
@@ -304,6 +304,7 @@ ${count} ${msg("headings")}`;
       const h2Key = getH2Key(item);
       const row = document.createElement("div");
       row.className = `toc-row ${item.level}`;
+      if (item.parentH2Id) row.classList.add("child-row");
       row.style.backgroundColor = getItemColor(item);
       row.dataset.id = item.id ?? "";
       row.dataset.index = String(item.index);
@@ -320,14 +321,14 @@ ${count} ${msg("headings")}`;
       button.dataset.index = String(item.index);
       const collapse = document.createElement("button");
       collapse.type = "button";
-      collapse.dataset.role = "collapse-toggle";
-      collapse.className = "collapse-toggle";
       if (currentOptions.enableH2Collapse && item.level === "h2" && item.hasChildren && h2Key) {
+        collapse.className = "collapse-toggle";
         collapse.dataset.h2Id = h2Key;
-        collapse.textContent = collapsedH2Ids.has(h2Key) ? "+" : "\u2212";
+        collapse.textContent = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? "\u2212" : "+";
+        collapse.title = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? "\u6298\u308A\u305F\u305F\u3080" : "\u5C55\u958B\u3059\u308B";
         collapse.addEventListener("click", (event) => {
           event.stopPropagation();
-          toggleCollapse(h2Key);
+          toggleExpansion(h2Key);
         });
       } else {
         collapse.className = "collapse-placeholder";
@@ -349,7 +350,6 @@ ${count} ${msg("headings")}`;
     tocEl.appendChild(fragment);
     tocEl.hidden = false;
     statusEl.hidden = true;
-    applyCollapseVisibility();
     updateActiveHeading(nextActiveId);
   }
   async function getActiveTab() {
@@ -385,10 +385,11 @@ ${count} ${msg("headings")}`;
         setStatus(state?.error ?? msg("failedToLoad"), "warn");
         return;
       }
-      rawItems = state.items;
-      const visibleItems = filterByOptions(rawItems);
+      const baseItems = state.items ?? [];
+      const visibleItems = visibleContentItems(baseItems);
       setMeta(state.title, state.url, visibleItems.length);
-      renderToc(rawItems, state.activeId);
+      renderToc(baseItems, state.activeId);
+      if (state.generatedFromHeadings) setStatus(msg("generatedFromHeadings"), "ok");
     } catch (error) {
       setMeta(tab.title ?? "Error", tab.url ?? "", 0);
       const message = normalizeError(error).includes("Cannot access a chrome:// URL") ? msg("unsupportedPage") : `${msg("failedToLoad")}: ${normalizeError(error)}`;
@@ -413,7 +414,7 @@ ${count} ${msg("headings")}`;
     return items.map((item) => {
       if (item.level === "top") return `- [${item.text}](#top)`;
       if (item.level === "bottom") return `- [${item.text}](#bottom)`;
-      const depth = currentOptions.showSubHeadings ? Math.max(0, Number(item.level.slice(1)) - 2) : 0;
+      const depth = currentOptions.showSubHeadings || item.parentH2Id ? Math.max(0, Number(String(item.level).slice(1)) - 2) : 0;
       const indent = "  ".repeat(depth);
       if (currentOptions.includeLinks && item.id) return `${indent}- [${item.text}](#${encodeURIComponent(item.id)})`;
       return `${indent}- ${item.text}`;
@@ -426,7 +427,7 @@ ${count} ${msg("headings")}`;
       return;
     }
     await navigator.clipboard.writeText(formatSelectedMarkdown(items));
-    setStatus(msg("copiedSelected"));
+    setStatus(`${msg("copiedSelected")} ${msg("copyNextAction")}`, "ok");
   }
   function setAllSelection(checked) {
     tocEl.querySelectorAll('[data-role="toc-selection"]').forEach((element) => {

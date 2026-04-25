@@ -11,7 +11,7 @@ const messages = {
     legacyModal: '従来モーダル',
     unsupportedPage: 'note.com または editor.note.com の記事・編集画面を開くと、ここにTOCが表示されます。',
     noActiveTab: 'アクティブタブが見つかりません。',
-    noTocItems: 'TOC項目がありません。見出しが存在する記事で再度お試しください。',
+    noTocItems: 'TOC項目がありません。本文内の見出しも検出できませんでした。',
     failedToLoad: '読み込みに失敗しました',
     failedToJump: 'ジャンプに失敗しました',
     failedToOpenLegacy: '従来モーダルの起動に失敗しました',
@@ -23,7 +23,9 @@ const messages = {
     topOfPage: '一番上へ',
     bottomOfPage: '一番下へ',
     missingJumpId: 'ジャンプID未検出',
-    headings: 'headings'
+    headings: 'headings',
+    generatedFromHeadings: '本文の見出しからTOCを生成しました。',
+    copyNextAction: '必要な場所で Ctrl+V を押して貼り付けてください。'
   },
   en: {
     panelTitle: 'note TOC Panel',
@@ -33,7 +35,7 @@ const messages = {
     legacyModal: 'Legacy modal',
     unsupportedPage: 'Open a note.com article or editor page to display the TOC here.',
     noActiveTab: 'No active tab was found.',
-    noTocItems: 'No TOC items were found. Please try again on an article with headings.',
+    noTocItems: 'No TOC items or document headings were found.',
     failedToLoad: 'Failed to load',
     failedToJump: 'Failed to jump',
     failedToOpenLegacy: 'Failed to open the legacy modal',
@@ -45,7 +47,9 @@ const messages = {
     topOfPage: 'Top of page',
     bottomOfPage: 'Bottom of page',
     missingJumpId: 'No jump ID detected',
-    headings: 'headings'
+    headings: 'headings',
+    generatedFromHeadings: 'Generated a TOC from document headings.',
+    copyNextAction: 'Press Ctrl+V where you want to paste it.'
   }
 } as const;
 

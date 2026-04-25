@@ -715,23 +715,33 @@ ${items.join("\n")}
       sidePanelMutationObserver = new MutationObserver(() => notifySidePanelActiveHeading());
       sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
     }, buildFallbackSidePanelItems = function() {
-      const headings = Array.from(document.querySelectorAll("article h2, article h3, article h4, article h5, article h6, main h2, main h3, main h4, main h5, main h6, h2, h3, h4, h5, h6")).filter((element) => {
-        const text = (element.textContent ?? "").trim();
-        return text.length > 0 && text !== "\u76EE\u6B21";
-      });
+      const selectors = [
+        "article h1, article h2, article h3, article h4, article h5, article h6",
+        "main h1, main h2, main h3, main h4, main h5, main h6",
+        "[class*=article] h1, [class*=article] h2, [class*=article] h3, [class*=article] h4, [class*=article] h5, [class*=article] h6",
+        "h1, h2, h3, h4, h5, h6"
+      ];
+      let headingElements = [];
+      for (const selector of selectors) {
+        headingElements = Array.from(document.querySelectorAll(selector)).filter((element) => {
+          const text = (element.textContent ?? "").trim();
+          const rect = element.getBoundingClientRect();
+          return text.length > 0 && text !== "\u76EE\u6B21" && rect.width > 0 && rect.height > 0;
+        });
+        if (headingElements.length > 0) break;
+      }
       const seen = /* @__PURE__ */ new Set();
-      const uniqueHeadings = headings.filter((element) => {
+      const uniqueHeadings = headingElements.filter((element) => {
         if (seen.has(element)) return false;
         seen.add(element);
         return true;
       });
       return uniqueHeadings.map((element, index) => {
-        if (!element.id) {
-          element.id = `note-toc-fallback-${index + 1}`;
-        }
+        if (!element.id) element.id = `note-toc-fallback-${index + 1}`;
+        const level = element.tagName.toLowerCase();
         return {
           index,
-          level: element.tagName.toLowerCase(),
+          level: level === "h1" ? "h2" : level,
           text: (element.textContent ?? "").trim(),
           id: element.id,
           source: /^https:\/\/editor\.note\.com\//.test(location.href) ? "editor" : "published"
@@ -866,7 +876,7 @@ note\u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\
         attachSidePanelScrollSync();
         attachSidePanelMutationObserver();
         sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
-        return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
+        return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems, generatedFromHeadings: false };
       } catch (error) {
         const fallbackItems = buildFallbackSidePanelItems();
         if (fallbackItems.length > 0) {
@@ -874,7 +884,7 @@ note\u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\
           attachSidePanelScrollSync();
           attachSidePanelMutationObserver();
           sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
-          return { ok: true, supported: true, url: location.href, title: document.title || "note", activeId: sidePanelActiveId, items: sidePanelLastItems };
+          return { ok: true, supported: true, url: location.href, title: document.title || "note", activeId: sidePanelActiveId, items: sidePanelLastItems, generatedFromHeadings: true };
         }
         return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
       }

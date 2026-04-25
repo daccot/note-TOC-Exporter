@@ -190,27 +190,37 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
   }
 
   function buildFallbackSidePanelItems(): ExportResult['tocData'] {
-    const headings = Array.from(document.querySelectorAll<HTMLElement>('article h2, article h3, article h4, article h5, article h6, main h2, main h3, main h4, main h5, main h6, h2, h3, h4, h5, h6'))
-      .filter((element) => {
-        const text = (element.textContent ?? '').trim();
-        return text.length > 0 && text !== '目次';
-      });
+    const selectors = [
+      'article h1, article h2, article h3, article h4, article h5, article h6',
+      'main h1, main h2, main h3, main h4, main h5, main h6',
+      '[class*=article] h1, [class*=article] h2, [class*=article] h3, [class*=article] h4, [class*=article] h5, [class*=article] h6',
+      'h1, h2, h3, h4, h5, h6'
+    ];
+
+    let headingElements: HTMLElement[] = [];
+    for (const selector of selectors) {
+      headingElements = Array.from(document.querySelectorAll<HTMLElement>(selector))
+        .filter((element) => {
+          const text = (element.textContent ?? '').trim();
+          const rect = element.getBoundingClientRect();
+          return text.length > 0 && text !== '目次' && rect.width > 0 && rect.height > 0;
+        });
+      if (headingElements.length > 0) break;
+    }
 
     const seen = new Set<HTMLElement>();
-    const uniqueHeadings = headings.filter((element) => {
+    const uniqueHeadings = headingElements.filter((element) => {
       if (seen.has(element)) return false;
       seen.add(element);
       return true;
     });
 
     return uniqueHeadings.map((element, index) => {
-      if (!element.id) {
-        element.id = `note-toc-fallback-${index + 1}`;
-      }
-
+      if (!element.id) element.id = `note-toc-fallback-${index + 1}`;
+      const level = element.tagName.toLowerCase();
       return {
         index,
-        level: element.tagName.toLowerCase() as ExportResult['tocData'][number]['level'],
+        level: level === 'h1' ? 'h2' : level as ExportResult['tocData'][number]['level'],
         text: (element.textContent ?? '').trim(),
         id: element.id,
         source: /^https:\/\/editor\.note\.com\//.test(location.href) ? 'editor' : 'published'
@@ -224,6 +234,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     title: string;
     activeId: string | null;
     items: ExportResult['tocData'];
+    generatedFromHeadings?: boolean;
     error?: string;
   }> {
     if (!isSupportedSidePanelPage()) {
@@ -235,7 +246,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
       attachSidePanelScrollSync();
       attachSidePanelMutationObserver();
       sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
-      return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
+      return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems, generatedFromHeadings: false };
     } catch (error) {
       const fallbackItems = buildFallbackSidePanelItems();
       if (fallbackItems.length > 0) {
@@ -243,7 +254,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
         attachSidePanelScrollSync();
         attachSidePanelMutationObserver();
         sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
-        return { ok: true, supported: true, url: location.href, title: document.title || 'note', activeId: sidePanelActiveId, items: sidePanelLastItems };
+        return { ok: true, supported: true, url: location.href, title: document.title || 'note', activeId: sidePanelActiveId, items: sidePanelLastItems, generatedFromHeadings: true };
       }
 
       return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
