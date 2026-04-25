@@ -21,6 +21,7 @@
     showSubHeadings: false,
     enableH2Collapse: true,
     collapseH2ByDefault: false,
+    hideSupportHeadingInPanel: true,
     backgroundImageMode: "default",
     backgroundImageDataUrl: "",
     backgroundOverlayOpacity: 0.58,
@@ -55,6 +56,7 @@
       showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
       enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
       collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
+      hideSupportHeadingInPanel: typeof raw.hideSupportHeadingInPanel === "boolean" ? raw.hideSupportHeadingInPanel : DEFAULT_OPTIONS.hideSupportHeadingInPanel,
       backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
       backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
       backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
@@ -211,6 +213,11 @@
   var currentOptions = DEFAULT_OPTIONS;
   var expandedH2Ids = /* @__PURE__ */ new Set();
   var manuallyChangedExpansion = false;
+  function isSupportHeading(item) {
+    if (item.level !== "h2") return false;
+    const normalized = item.text.replace(/\s+/g, " ").trim();
+    return normalized === "\u3044\u3044\u306A\u3068\u601D\u3063\u305F\u3089\u5FDC\u63F4\u3057\u3088\u3046\uFF01";
+  }
   function isSupportedUrl(url) {
     return /^https:\/\/note\.com\//.test(url ?? "") || /^https:\/\/editor\.note\.com\//.test(url ?? "");
   }
@@ -304,6 +311,7 @@
   }
   function shouldShowItem(item) {
     if (item.level === "top" || item.level === "bottom") return true;
+    if (currentOptions.hideSupportHeadingInPanel && isSupportHeading(item)) return false;
     if (!item.parentH2Id) return true;
     if (currentOptions.showSubHeadings) return true;
     return expandedH2Ids.has(item.parentH2Id);

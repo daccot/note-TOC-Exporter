@@ -23,6 +23,7 @@
     showSubHeadings: false,
     enableH2Collapse: true,
     collapseH2ByDefault: false,
+    hideSupportHeadingInPanel: true,
     backgroundImageMode: "default",
     backgroundImageDataUrl: "",
     backgroundOverlayOpacity: 0.58,
@@ -58,6 +59,7 @@
       showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
       enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
       collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
+      hideSupportHeadingInPanel: typeof raw.hideSupportHeadingInPanel === "boolean" ? raw.hideSupportHeadingInPanel : DEFAULT_OPTIONS.hideSupportHeadingInPanel,
       backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
       backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
       backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
@@ -212,6 +214,7 @@
       showSubHeadings: byId("showSubHeadings").value === "true",
       enableH2Collapse: byId("enableH2Collapse").value === "true",
       collapseH2ByDefault: byId("collapseH2ByDefault").value === "true",
+      hideSupportHeadingInPanel: byId("hideSupportHeadingInPanel").value === "true",
       headingColors: {
         h2: byId("headingColorH2").value,
         h3: byId("headingColorH3").value,
@@ -243,6 +246,7 @@
     byId("showSubHeadings").value = String(options.showSubHeadings);
     byId("enableH2Collapse").value = String(options.enableH2Collapse);
     byId("collapseH2ByDefault").value = String(options.collapseH2ByDefault);
+    byId("hideSupportHeadingInPanel").value = String(options.hideSupportHeadingInPanel);
     byId("headingColorH2").value = options.headingColors.h2;
     byId("headingColorH3").value = options.headingColors.h3;
     byId("headingColorH4").value = options.headingColors.h4;

@@ -49,6 +49,12 @@ let currentOptions: ExportOptions = DEFAULT_OPTIONS;
 let expandedH2Ids = new Set<string>();
 let manuallyChangedExpansion = false;
 
+function isSupportHeading(item: SidePanelItem): boolean {
+  if (item.level !== 'h2') return false;
+  const normalized = item.text.replace(/\s+/g, ' ').trim();
+  return normalized === 'いいなと思ったら応援しよう！';
+}
+
 function isSupportedUrl(url: string | undefined): boolean {
   return /^https:\/\/note\.com\//.test(url ?? '') || /^https:\/\/editor\.note\.com\//.test(url ?? '');
 }
@@ -162,6 +168,7 @@ function getH2Key(item: SidePanelItem): string | null {
 
 function shouldShowItem(item: SidePanelItem): boolean {
   if (item.level === 'top' || item.level === 'bottom') return true;
+  if (currentOptions.hideSupportHeadingInPanel && isSupportHeading(item)) return false;
   if (!item.parentH2Id) return true;
   if (currentOptions.showSubHeadings) return true;
   return expandedH2Ids.has(item.parentH2Id);

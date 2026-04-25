@@ -1,6 +1,6 @@
 {
     "name":  "note-toc-extension",
-    "version":  "2.5.0",
+    "version":  "2.5.1",
     "private":  true,
     "description":  "Chrome extension that exports note.com table of contents as Markdown links.",
     "scripts":  {

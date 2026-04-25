@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "2.5.0",
-    [string]$CommitMessage = "Fix v2.5.0 H3-only TOC handling and clean release package"
+    [string]$Version = "2.5.1",
+    [string]$CommitMessage = "Release v2.5.1"
 )
 
 Set-StrictMode -Version Latest

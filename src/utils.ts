@@ -73,6 +73,9 @@ export function mergeOptions(raw: Partial<ExportOptions> = {}): ExportOptions {
     collapseH2ByDefault: typeof raw.collapseH2ByDefault === 'boolean'
       ? raw.collapseH2ByDefault
       : DEFAULT_OPTIONS.collapseH2ByDefault,
+    hideSupportHeadingInPanel: typeof raw.hideSupportHeadingInPanel === 'boolean'
+      ? raw.hideSupportHeadingInPanel
+      : DEFAULT_OPTIONS.hideSupportHeadingInPanel,
     backgroundImageMode: raw.backgroundImageMode === 'default' || raw.backgroundImageMode === 'none' || raw.backgroundImageMode === 'custom'
       ? raw.backgroundImageMode
       : DEFAULT_OPTIONS.backgroundImageMode,

@@ -28,6 +28,7 @@ export const DEFAULT_OPTIONS: ExportOptions = {
   showSubHeadings: false,
   enableH2Collapse: true,
   collapseH2ByDefault: false,
+  hideSupportHeadingInPanel: true,
   backgroundImageMode: 'default',
   backgroundImageDataUrl: '',
   backgroundOverlayOpacity: 0.58,

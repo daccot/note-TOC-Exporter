@@ -92,6 +92,7 @@ function readForm(): ExportOptions {
     showSubHeadings: byId<HTMLSelectElement>('showSubHeadings').value === 'true',
     enableH2Collapse: byId<HTMLSelectElement>('enableH2Collapse').value === 'true',
     collapseH2ByDefault: byId<HTMLSelectElement>('collapseH2ByDefault').value === 'true',
+    hideSupportHeadingInPanel: byId<HTMLSelectElement>('hideSupportHeadingInPanel').value === 'true',
     headingColors: {
       h2: byId<HTMLInputElement>('headingColorH2').value,
       h3: byId<HTMLInputElement>('headingColorH3').value,
@@ -124,6 +125,7 @@ function writeForm(options: ExportOptions): void {
   byId<HTMLSelectElement>('showSubHeadings').value = String(options.showSubHeadings);
   byId<HTMLSelectElement>('enableH2Collapse').value = String(options.enableH2Collapse);
   byId<HTMLSelectElement>('collapseH2ByDefault').value = String(options.collapseH2ByDefault);
+  byId<HTMLSelectElement>('hideSupportHeadingInPanel').value = String(options.hideSupportHeadingInPanel);
   byId<HTMLInputElement>('headingColorH2').value = options.headingColors.h2;
   byId<HTMLInputElement>('headingColorH3').value = options.headingColors.h3;
   byId<HTMLInputElement>('headingColorH4').value = options.headingColors.h4;

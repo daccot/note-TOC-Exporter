@@ -54,6 +54,7 @@ export interface ExportOptions {
   showSubHeadings: boolean;
   enableH2Collapse: boolean;
   collapseH2ByDefault: boolean;
+  hideSupportHeadingInPanel: boolean;
   backgroundImageMode: BackgroundImageMode;
   backgroundImageDataUrl: string;
   backgroundOverlayOpacity: number;

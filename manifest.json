@@ -1,7 +1,7 @@
 {
     "manifest_version":  3,
     "name":  "note TOC Exporter",
-    "version":  "2.5.0",
+    "version":  "2.5.1",
     "description":  "noteの公開記事・編集画面からリンク付きTOCを生成し、コピー用モーダルを表示します",
     "permissions":  [
                         "activeTab",
