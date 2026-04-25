@@ -22,6 +22,9 @@
 ${count} headings`;
     metaEl.title = url;
   }
+  function isSupportedUrl(url) {
+    return /^https:\/\/note\.com\//.test(url ?? "") || /^https:\/\/editor\.note\.com\//.test(url ?? "");
+  }
   function normalizeError(error) {
     return error instanceof Error ? error.message : String(error);
   }
@@ -89,6 +92,11 @@ ${count} headings`;
     }
     currentTabId = tab.id;
     try {
+      if (!isSupportedUrl(tab.url)) {
+        setMeta(tab.title ?? "Unsupported page", tab.url ?? "", 0);
+        setStatus("note.com \u307E\u305F\u306F editor.note.com \u306E\u8A18\u4E8B\u30FB\u7DE8\u96C6\u753B\u9762\u3092\u958B\u304F\u3068\u3001\u3053\u3053\u306BTOC\u304C\u8868\u793A\u3055\u308C\u307E\u3059\u3002", "warn");
+        return;
+      }
       await ensureContentScript(tab.id);
       const state = await chrome.tabs.sendMessage(tab.id, { type: "GET_NOTE_TOC_SIDE_PANEL_STATE" });
       if (!state?.ok) {

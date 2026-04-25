@@ -690,6 +690,29 @@ ${items.join("\n")}
       if (sidePanelMutationObserver) return;
       sidePanelMutationObserver = new MutationObserver(() => notifySidePanelActiveHeading());
       sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
+    }, buildFallbackSidePanelItems = function() {
+      const headings = Array.from(document.querySelectorAll("article h2, article h3, article h4, article h5, article h6, main h2, main h3, main h4, main h5, main h6, h2, h3, h4, h5, h6")).filter((element) => {
+        const text = (element.textContent ?? "").trim();
+        return text.length > 0 && text !== "\u76EE\u6B21";
+      });
+      const seen = /* @__PURE__ */ new Set();
+      const uniqueHeadings = headings.filter((element) => {
+        if (seen.has(element)) return false;
+        seen.add(element);
+        return true;
+      });
+      return uniqueHeadings.map((element, index) => {
+        if (!element.id) {
+          element.id = `note-toc-fallback-${index + 1}`;
+        }
+        return {
+          index,
+          level: element.tagName.toLowerCase(),
+          text: (element.textContent ?? "").trim(),
+          id: element.id,
+          source: /^https:\/\/editor\.note\.com\//.test(location.href) ? "editor" : "published"
+        };
+      });
     }, jumpToSidePanelItem = function(id, index) {
       let target = null;
       if (id) target = document.getElementById(id);
@@ -702,7 +725,7 @@ ${items.join("\n")}
       sidePanelActiveId = target.id || id;
       void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
     };
-    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText, isSupportedSidePanelPage2 = isSupportedSidePanelPage, getHeadingElementByTocItem2 = getHeadingElementByTocItem, getActiveHeadingIdFromViewport2 = getActiveHeadingIdFromViewport, notifySidePanelActiveHeading2 = notifySidePanelActiveHeading, attachSidePanelScrollSync2 = attachSidePanelScrollSync, attachSidePanelMutationObserver2 = attachSidePanelMutationObserver, jumpToSidePanelItem2 = jumpToSidePanelItem;
+    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText, isSupportedSidePanelPage2 = isSupportedSidePanelPage, getHeadingElementByTocItem2 = getHeadingElementByTocItem, getActiveHeadingIdFromViewport2 = getActiveHeadingIdFromViewport, notifySidePanelActiveHeading2 = notifySidePanelActiveHeading, attachSidePanelScrollSync2 = attachSidePanelScrollSync, attachSidePanelMutationObserver2 = attachSidePanelMutationObserver, buildFallbackSidePanelItems2 = buildFallbackSidePanelItems, jumpToSidePanelItem2 = jumpToSidePanelItem;
     window.__NOTE_TOC_EXPORTER_BOOTED__ = true;
     let isAutoRunning = false;
     async function copyText(text) {
@@ -809,6 +832,14 @@ note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3082\u3042\u308B\u3055
         sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
         return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
       } catch (error) {
+        const fallbackItems = buildFallbackSidePanelItems();
+        if (fallbackItems.length > 0) {
+          sidePanelLastItems = fallbackItems;
+          attachSidePanelScrollSync();
+          attachSidePanelMutationObserver();
+          sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+          return { ok: true, supported: true, url: location.href, title: document.title || "note", activeId: sidePanelActiveId, items: sidePanelLastItems };
+        }
         return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
       }
     }
@@ -849,5 +880,6 @@ note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3082\u3042\u308B\u3055
   var notifySidePanelActiveHeading2;
   var attachSidePanelScrollSync2;
   var attachSidePanelMutationObserver2;
+  var buildFallbackSidePanelItems2;
   var jumpToSidePanelItem2;
 })();

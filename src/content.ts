@@ -189,6 +189,34 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
   }
 
+  function buildFallbackSidePanelItems(): ExportResult['tocData'] {
+    const headings = Array.from(document.querySelectorAll<HTMLElement>('article h2, article h3, article h4, article h5, article h6, main h2, main h3, main h4, main h5, main h6, h2, h3, h4, h5, h6'))
+      .filter((element) => {
+        const text = (element.textContent ?? '').trim();
+        return text.length > 0 && text !== '目次';
+      });
+
+    const seen = new Set<HTMLElement>();
+    const uniqueHeadings = headings.filter((element) => {
+      if (seen.has(element)) return false;
+      seen.add(element);
+      return true;
+    });
+
+    return uniqueHeadings.map((element, index) => {
+      if (!element.id) {
+        element.id = `note-toc-fallback-${index + 1}`;
+      }
+
+      return {
+        index,
+        level: element.tagName.toLowerCase() as ExportResult['tocData'][number]['level'],
+        text: (element.textContent ?? '').trim(),
+        id: element.id,
+        source: /^https:\/\/editor\.note\.com\//.test(location.href) ? 'editor' : 'published'
+      };
+    });
+  }
   async function getSidePanelState(): Promise<{
     ok: boolean;
     supported: boolean;
@@ -209,6 +237,15 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
       sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
       return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
     } catch (error) {
+      const fallbackItems = buildFallbackSidePanelItems();
+      if (fallbackItems.length > 0) {
+        sidePanelLastItems = fallbackItems;
+        attachSidePanelScrollSync();
+        attachSidePanelMutationObserver();
+        sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+        return { ok: true, supported: true, url: location.href, title: document.title || 'note', activeId: sidePanelActiveId, items: sidePanelLastItems };
+      }
+
       return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
     }
   }

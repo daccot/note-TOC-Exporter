@@ -45,6 +45,10 @@ function setMeta(title: string, url: string, count: number): void {
   metaEl.title = url;
 }
 
+
+function isSupportedUrl(url: string | undefined): boolean {
+  return /^https:\/\/note\.com\//.test(url ?? '') || /^https:\/\/editor\.note\.com\//.test(url ?? '');
+}
 function normalizeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -126,6 +130,12 @@ async function requestState(): Promise<void> {
   currentTabId = tab.id;
 
   try {
+    if (!isSupportedUrl(tab.url)) {
+      setMeta(tab.title ?? 'Unsupported page', tab.url ?? '', 0);
+      setStatus('note.com または editor.note.com の記事・編集画面を開くと、ここにTOCが表示されます。', 'warn');
+      return;
+    }
+
     await ensureContentScript(tab.id);
     const state = (await chrome.tabs.sendMessage(tab.id, { type: 'GET_NOTE_TOC_SIDE_PANEL_STATE' })) as SidePanelState;
 
