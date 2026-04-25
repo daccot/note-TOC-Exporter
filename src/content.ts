@@ -72,7 +72,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     const { output, filename } = formatExport(tocData, meta, stats, options);
 
     if (!output.trim()) {
-      throw new Error('TOCは取得できたけど、出力が空やった。見出し設定かテンプレ見直してな。');
+      throw new Error('TOCは取得できましたが、出力が空です。見出し設定またはテンプレートを確認してください。');
     }
 
     return { label, tocData, options, output, meta, stats, diagnostics, filename };
@@ -118,7 +118,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     } catch (error) {
       console.error(LOG_PREFIX, error);
       const detail = error instanceof Error ? error.message : String(error);
-      showErrorModal(`${detail}\n\nnote 側のDOM変更の可能性もあるさけ、下の診断ログとセレクタ結果を見てな。`);
+      showErrorModal(`${detail}\n\nnote側のDOM変更の可能性があります。診断ログとセレクタ結果を確認してください。`);
     } finally {
       isAutoRunning = false;
     }
@@ -251,6 +251,18 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
   }
 
   function jumpToSidePanelItem(id: string | null, index: number | null): void {
+    if (id === '__NOTE_TOC_TOP__') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      sidePanelActiveId = id;
+      void chrome.runtime.sendMessage({ type: 'NOTE_TOC_ACTIVE_HEADING_CHANGED', activeId: sidePanelActiveId }).catch(() => undefined);
+      return;
+    }
+    if (id === '__NOTE_TOC_BOTTOM__') {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+      sidePanelActiveId = id;
+      void chrome.runtime.sendMessage({ type: 'NOTE_TOC_ACTIVE_HEADING_CHANGED', activeId: sidePanelActiveId }).catch(() => undefined);
+      return;
+    }
     let target: HTMLElement | null = null;
     if (id) target = document.getElementById(id);
     if (!target && Number.isFinite(index ?? NaN)) {
