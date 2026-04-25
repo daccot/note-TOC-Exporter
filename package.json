@@ -4,8 +4,9 @@
     "private":  true,
     "description":  "Chrome extension that exports note.com table of contents as Markdown links.",
     "scripts":  {
-                    "build":  "npm run clean \u0026\u0026 npm exec esbuild -- src/background.ts src/content.ts src/options.ts src/popup.ts src/sidepanel.ts --bundle --format=iife --target=chrome120 --outdir=dist",
+                    "build":  "npm run clean \u0026\u0026 npm exec esbuild -- src/background.ts src/content.ts src/options.ts src/popup.ts src/sidepanel.ts --bundle --format=iife --target=chrome120 --outdir=dist \u0026\u0026 npm run copy-static",
                     "clean":  "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }\"",
+                    "copy-static":  "powershell -NoProfile -ExecutionPolicy Bypass -File .\\scripts\\copy-static.ps1",
                     "e2e":  "playwright test",
                     "test":  "vitest run",
                     "typecheck":  "tsc -p tsconfig.json --noEmit"

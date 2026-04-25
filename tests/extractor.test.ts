@@ -37,6 +37,26 @@ describe('waitForTocData', () => {
     expect(result.diagnostics.some((entry) => entry.step === 'selector-match')).toBe(true);
   });
 
+  it('prefers actual heading levels for h3-only published articles', async () => {
+    document.body.innerHTML = `
+      <article>
+        <nav aria-label="目次">
+          <ol>
+            <li data-level="h2"><a href="#alpha">Alpha</a></li>
+            <li data-level="h3"><a href="#beta">Beta</a></li>
+          </ol>
+        </nav>
+        <h3 id="alpha">Alpha</h3>
+        <h3 id="beta">Beta</h3>
+      </article>
+    `;
+
+    const result = await waitForTocData('https://note.com/alice/n/h3only');
+
+    expect(result.tocData.map((item) => item.level)).toEqual(['h3', 'h3']);
+    expect(result.tocData.map((item) => item.text)).toEqual(['Alpha', 'Beta']);
+  });
+
   it('extracts editor toc from table-of-contents json', async () => {
     document.head.innerHTML = '<title>Editor Title</title>';
     document.body.innerHTML = `

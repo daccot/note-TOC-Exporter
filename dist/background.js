@@ -30,7 +30,7 @@
   async function ensureContentScript(tabId) {
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ["dist/content.js"]
+      files: ["content.js"]
     });
   }
   async function getActiveTab() {

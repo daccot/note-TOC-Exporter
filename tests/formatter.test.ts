@@ -53,4 +53,19 @@ describe('formatExport', () => {
     }));
     expect(output).not.toContain('Child');
   });
+
+  it('treats h3-only headings as first-level items', () => {
+    const h3OnlyData: TocItem[] = [
+      { index: 0, level: 'h3', text: 'Alpha', id: 'alpha', source: 'published' },
+      { index: 1, level: 'h3', text: 'Beta', id: 'beta', source: 'published' }
+    ];
+
+    const { output } = formatExport(h3OnlyData, meta, { total: 2, byLevel: { h2: 0, h3: 2, h4: 0, h5: 0, h6: 0 } }, mergeOptions({
+      template: '{{toc}}'
+    }));
+
+    expect(output).toContain('- [Alpha](#alpha)');
+    expect(output).toContain('\n- [Beta](#beta)');
+    expect(output).not.toContain('\n  - [Beta](#beta)');
+  });
 });

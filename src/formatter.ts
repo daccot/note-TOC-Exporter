@@ -1,4 +1,5 @@
-import { applyTemplate, buildExportFilename, buildPublishedUrl, buildTemplateContext, escapeText, levelToDepth, matchesExclusionRule } from './utils';
+import { getEffectiveBaseHeadingLevel, getHeadingDepth } from './headings';
+import { applyTemplate, buildExportFilename, buildPublishedUrl, buildTemplateContext, escapeText, matchesExclusionRule } from './utils';
 import type { ArticleMeta, ExportOptions, TocItem, TocStats } from './types';
 
 function buildIndent(depth: number, options: ExportOptions): string {
@@ -16,8 +17,11 @@ function filterItems(tocData: TocItem[], options: ExportOptions): TocItem[] {
 }
 
 function formatListItems(tocData: TocItem[], options: ExportOptions): string[] {
-  return filterItems(tocData, options).map((item, visibleIndex) => {
-    const indent = buildIndent(levelToDepth(item.level, options.minHeadingLevel), options);
+  const filteredItems = filterItems(tocData, options);
+  const baseLevel = getEffectiveBaseHeadingLevel(filteredItems, options.minHeadingLevel);
+
+  return filteredItems.map((item, visibleIndex) => {
+    const indent = buildIndent(getHeadingDepth(item.level, baseLevel), options);
     const marker = options.orderedList ? `${visibleIndex + 1}.` : '-';
     const text = escapeText(item.text);
 
@@ -31,8 +35,11 @@ function formatListItems(tocData: TocItem[], options: ExportOptions): string[] {
 }
 
 function formatPlainItems(tocData: TocItem[], options: ExportOptions): string[] {
-  return filterItems(tocData, options).map((item, visibleIndex) => {
-    const indent = buildIndent(levelToDepth(item.level, options.minHeadingLevel), options);
+  const filteredItems = filterItems(tocData, options);
+  const baseLevel = getEffectiveBaseHeadingLevel(filteredItems, options.minHeadingLevel);
+
+  return filteredItems.map((item, visibleIndex) => {
+    const indent = buildIndent(getHeadingDepth(item.level, baseLevel), options);
     const marker = options.orderedList ? `${visibleIndex + 1}.` : '-';
     const text = escapeText(item.text);
     const href = options.includeLinks ? buildPublishedUrl(item.id) : null;

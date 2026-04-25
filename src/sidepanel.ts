@@ -1,6 +1,5 @@
-export {};
-
 import { DEFAULT_OPTIONS } from './constants';
+import { getBaseHeadingLevel as getBaseHeadingLevelFromItems } from './headings';
 import { t } from './i18n';
 import { loadOptions } from './storage';
 import { mergeOptions } from './utils';
@@ -119,42 +118,53 @@ function clearToc(): void {
   rawItems = [];
 }
 
+function getBaseHeadingLevel(items: SidePanelItem[]): HeadingLevel {
+  const contentItems = items.filter((item): item is SidePanelItem & { level: HeadingLevel } => item.level !== 'top' && item.level !== 'bottom');
+  return getBaseHeadingLevelFromItems(contentItems);
+}
+
 function annotateHierarchy(items: SidePanelItem[]): SidePanelItem[] {
-  let currentH2Id: string | null = null;
-  const h2WithChildren = new Set<string>();
+  const baseLevel = getBaseHeadingLevel(items);
+  let currentRootId: string | null = null;
+  const rootsWithChildren = new Set<string>();
 
   const annotated = items.map((item) => {
-    if (item.level === 'h2') {
-      currentH2Id = item.id ?? `h2-index-${item.index}`;
+    if (item.level === 'top' || item.level === 'bottom') return item;
+
+    if (item.level === baseLevel) {
+      currentRootId = item.id ?? `${baseLevel}-index-${item.index}`;
       return { ...item, parentH2Id: null };
     }
-    if (item.level !== 'top' && item.level !== 'bottom' && currentH2Id) {
-      h2WithChildren.add(currentH2Id);
-      return { ...item, parentH2Id: currentH2Id };
+
+    if (currentRootId) {
+      rootsWithChildren.add(currentRootId);
+      return { ...item, parentH2Id: currentRootId };
     }
-    return item;
+
+    return { ...item, parentH2Id: null };
   });
 
   return annotated.map((item) => {
-    if (item.level === 'h2') {
-      const h2Key = item.id ?? `h2-index-${item.index}`;
-      return { ...item, hasChildren: h2WithChildren.has(h2Key) };
+    if (item.level === baseLevel) {
+      const key = item.id ?? `${baseLevel}-index-${item.index}`;
+      return { ...item, hasChildren: rootsWithChildren.has(key) };
     }
     return item;
   });
 }
 
 function getH2Key(item: SidePanelItem): string | null {
-  if (item.level !== 'h2') return item.parentH2Id ?? null;
-  return item.id ?? `h2-index-${item.index}`;
+  const baseLevel = getBaseHeadingLevel(rawItems.length > 0 ? rawItems : currentItems);
+  if (item.level === 'top' || item.level === 'bottom') return null;
+  if (item.level !== baseLevel) return item.parentH2Id ?? null;
+  return item.id ?? `${baseLevel}-index-${item.index}`;
 }
 
 function shouldShowItem(item: SidePanelItem): boolean {
   if (item.level === 'top' || item.level === 'bottom') return true;
-  if (item.level === 'h2') return true;
+  if (!item.parentH2Id) return true;
   if (currentOptions.showSubHeadings) return true;
-  const parent = item.parentH2Id ?? '';
-  return Boolean(parent && expandedH2Ids.has(parent));
+  return expandedH2Ids.has(item.parentH2Id);
 }
 
 function visibleContentItems(items: SidePanelItem[]): SidePanelItem[] {
@@ -186,19 +196,21 @@ function initializeExpansion(items: SidePanelItem[]): void {
   if (!currentOptions.enableH2Collapse) return;
   if (!currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault) return;
 
-  const h2Items = annotateHierarchy(items).filter((item) => item.level === 'h2' && item.hasChildren);
+  const baseLevel = getBaseHeadingLevel(items);
+  const rootItems = annotateHierarchy(items).filter((item) => item.level === baseLevel && item.hasChildren);
   expandedH2Ids = new Set(
-    h2Items
+    rootItems
       .filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault)
-      .map((item) => item.id ?? `h2-index-${item.index}`)
+      .map((item) => item.id ?? `${baseLevel}-index-${item.index}`)
   );
 }
 
 
 function getExpandableH2Ids(): string[] {
+  const baseLevel = getBaseHeadingLevel(rawItems);
   return annotateHierarchy(rawItems)
-    .filter((item) => item.level === 'h2' && item.hasChildren)
-    .map((item) => item.id ?? `h2-index-${item.index}`);
+    .filter((item) => item.level === baseLevel && item.hasChildren)
+    .map((item) => item.id ?? `${baseLevel}-index-${item.index}`);
 }
 
 function expandAll(): void {
@@ -280,7 +292,7 @@ function renderToc(items: SidePanelItem[], nextActiveId: string | null, preserve
 
     const collapse = document.createElement('button');
     collapse.type = 'button';
-    if (currentOptions.enableH2Collapse && item.level === 'h2' && item.hasChildren && h2Key) {
+    if (currentOptions.enableH2Collapse && item.hasChildren && h2Key) {
       collapse.className = 'collapse-toggle';
       collapse.dataset.h2Id = h2Key;
       collapse.textContent = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? '−' : '+';
@@ -386,10 +398,16 @@ function getSelectedItems(): SidePanelItem[] {
 }
 
 function formatSelectedMarkdown(items: SidePanelItem[]): string {
+  const contentItems = currentItems.filter((item) => item.level !== 'top' && item.level !== 'bottom');
+  const baseLevelNumber = contentItems.length > 0
+    ? Math.min(...contentItems.map((item) => Number(String(item.level).slice(1))).filter((level) => Number.isFinite(level)))
+    : 2;
+
   return items.map((item) => {
     if (item.level === 'top') return `- [${item.text}](#top)`;
     if (item.level === 'bottom') return `- [${item.text}](#bottom)`;
-    const depth = currentOptions.showSubHeadings || item.parentH2Id ? Math.max(0, Number(String(item.level).slice(1)) - 2) : 0;
+    const levelNumber = Number(String(item.level).slice(1));
+    const depth = Math.max(0, levelNumber - baseLevelNumber);
     const indent = '  '.repeat(depth);
     if (currentOptions.includeLinks && item.id) return `${indent}- [${item.text}](#${encodeURIComponent(item.id)})`;
     return `${indent}- ${item.text}`;

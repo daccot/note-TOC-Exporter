@@ -39,6 +39,9 @@
   var HEADING_LEVELS = ["h2", "h3", "h4", "h5", "h6"];
 
   // src/utils.ts
+  function isEditorPage(url) {
+    return /^https:\/\/editor\.note\.com\/notes\/.+\/edit\/?$/.test(url);
+  }
   function escapeText(text) {
     return String(text ?? "").replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
   }
@@ -52,9 +55,6 @@
       return `h${level}`;
     }
     return "h2";
-  }
-  function levelToDepth(level, minHeadingLevel) {
-    return Math.max(0, Number(level.slice(1)) - Number(minHeadingLevel.slice(1)));
   }
   function buildPublishedUrl(id) {
     return id ? `#${encodeURIComponent(id)}` : null;
@@ -143,6 +143,136 @@ H6: ${stats.byLevel.h6}`;
     return normalized || toc;
   }
 
+  // src/headings.ts
+  var NOTE_HEADING_SELECTORS = [
+    "article h2",
+    "article h3",
+    "article h4",
+    "article h5",
+    "article h6",
+    "main h2",
+    "main h3",
+    "main h4",
+    "main h5",
+    "main h6",
+    '[data-name="body"] h2',
+    '[data-name="body"] h3',
+    '[data-name="body"] h4',
+    '[data-name="body"] h5',
+    '[data-name="body"] h6',
+    ".note-common-styles__textnote-body h2",
+    ".note-common-styles__textnote-body h3",
+    ".note-common-styles__textnote-body h4",
+    ".note-common-styles__textnote-body h5",
+    ".note-common-styles__textnote-body h6",
+    '[class*="note-common-styles"] h2',
+    '[class*="note-common-styles"] h3',
+    '[class*="note-common-styles"] h4',
+    '[class*="note-common-styles"] h5',
+    '[class*="note-common-styles"] h6'
+  ].join(", ");
+  var EXCLUDED_CONTAINER_SELECTOR = [
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "dialog",
+    '[role="dialog"]',
+    ".modal",
+    '[class*="comment"]',
+    '[class*="recommend"]',
+    '[class*="related"]',
+    '[class*="profile"]',
+    '[class*="popular"]'
+  ].join(", ");
+  var ARTICLE_ROOT_SELECTOR = [
+    "article",
+    "main",
+    '[data-name="body"]',
+    '[class*="article"]',
+    '[class*="note-common-styles"]',
+    '[class*="body"]',
+    '[class*="content"]'
+  ].join(", ");
+  var NOISE_PATTERNS = [
+    /^目次$/,
+    /^記事を高評価したユーザー$/,
+    /^人気記事$/,
+    /^ピックアップされています$/,
+    /^購入者のコメント$/,
+    /^こちらもおすすめ$/,
+    /^おすすめ$/,
+    /^関連記事$/,
+    /^コメント$/,
+    /^サポート$/,
+    /^クリエイター$/,
+    /^マガジン$/
+  ];
+  function getHeadingLevelValue(level) {
+    const match = level.match(/^h([2-6])$/i);
+    return match ? Number(match[1]) : null;
+  }
+  function isNoiseHeading(text) {
+    return NOISE_PATTERNS.some((pattern) => pattern.test(text));
+  }
+  function getBaseHeadingLevel(items) {
+    const levels = items.map((item) => getHeadingLevelValue(item.level)).filter((level) => level !== null);
+    const baseLevel = levels.length > 0 ? Math.min(...levels) : 2;
+    return `h${baseLevel}`;
+  }
+  function getEffectiveBaseHeadingLevel(items, minimumLevel) {
+    const minimumLevelValue = getHeadingLevelValue(minimumLevel) ?? 2;
+    const filtered = items.filter((item) => {
+      const level = getHeadingLevelValue(item.level);
+      return level !== null && level >= minimumLevelValue;
+    });
+    return filtered.length > 0 ? getBaseHeadingLevel(filtered) : minimumLevel;
+  }
+  function getHeadingDepth(level, baseLevel) {
+    const levelValue = getHeadingLevelValue(level);
+    const baseLevelValue = getHeadingLevelValue(baseLevel);
+    if (levelValue === null || baseLevelValue === null) return 0;
+    return Math.max(0, levelValue - baseLevelValue);
+  }
+  function isNoteArticleHeadingElement(element) {
+    const text = escapeText(element.textContent);
+    if (!text || isNoiseHeading(text)) return false;
+    if (getHeadingLevelValue(element.tagName.toLowerCase()) === null) return false;
+    if (!element.closest(ARTICLE_ROOT_SELECTOR)) return false;
+    const excludedRoot = element.closest(EXCLUDED_CONTAINER_SELECTOR);
+    if (excludedRoot && !excludedRoot.closest("article")) return false;
+    return true;
+  }
+  function collectNoteArticleHeadingElements(root = document) {
+    const candidates = Array.from(root.querySelectorAll(NOTE_HEADING_SELECTORS)).filter(isNoteArticleHeadingElement);
+    const seen = /* @__PURE__ */ new Set();
+    return candidates.filter((element) => {
+      if (seen.has(element)) return false;
+      seen.add(element);
+      return true;
+    });
+  }
+  function buildTocItemsFromHeadingElements(elements, source) {
+    return elements.map((element, index) => {
+      const text = escapeText(element.textContent);
+      if (!text) return null;
+      if (!element.id) {
+        element.id = `note-toc-heading-${index + 1}`;
+      }
+      const item = {
+        index,
+        level: normalizeLevel(element.tagName),
+        text,
+        id: element.id,
+        source
+      };
+      return item;
+    }).filter((item) => item !== null);
+  }
+  function collectNoteArticleToc(source, root = document) {
+    return buildTocItemsFromHeadingElements(collectNoteArticleHeadingElements(root), source);
+  }
+
   // src/extractor.ts
   function pushDiagnostic(diagnostics, step, detail, status = "info", selector) {
     const entry = selector ? { step, detail, status, selector } : { step, detail, status };
@@ -190,6 +320,14 @@ H6: ${stats.byLevel.h6}`;
         source: "editor"
       };
     }).filter((item) => item.text);
+  }
+  function getEditorFallbackTocData(diagnostics) {
+    const tocData = collectNoteArticleToc("editor");
+    if (tocData.length === 0) {
+      throw new Error("\u7DE8\u96C6\u753B\u9762\u306E\u672C\u6587\u898B\u51FA\u3057\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3042\u308B\u3067\u3002");
+    }
+    pushDiagnostic(diagnostics, "editor-fallback-headings", `Collected ${tocData.length} heading(s) from editor body.`);
+    return tocData;
   }
   function getPublishedTocItems(diagnostics) {
     return queryWithDiagnostics(
@@ -273,6 +411,11 @@ H6: ${stats.byLevel.h6}`;
     return bucket.shift()?.id ?? null;
   }
   function getPublishedTocData(diagnostics) {
+    const articleHeadings = collectNoteArticleToc("published");
+    if (articleHeadings.length > 0) {
+      pushDiagnostic(diagnostics, "published-body-headings", `Collected ${articleHeadings.length} heading(s) from article body.`);
+      return articleHeadings;
+    }
     const tocItems = getPublishedTocItems(diagnostics);
     if (tocItems.length === 0) {
       throw new Error("\u516C\u958B\u753B\u9762\u306E TOC \u9805\u76EE\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3042\u308B\u3067\u3002");
@@ -294,7 +437,14 @@ H6: ${stats.byLevel.h6}`;
       try {
         pushDiagnostic(diagnostics, "attempt", `Attempt ${attempt + 1}/${maxAttempts} for ${url}`);
         if (/^https:\/\/editor\.note\.com\//.test(url)) {
-          const tocData = getEditorTocData(diagnostics);
+          let tocData;
+          try {
+            tocData = getEditorTocData(diagnostics);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            pushDiagnostic(diagnostics, "editor-fallback", message, "warn");
+            tocData = getEditorFallbackTocData(diagnostics);
+          }
           if (tocData.length > 0) {
             return { label: "\u7DE8\u96C6\u753B\u9762", tocData, meta: getMeta(diagnostics), stats: getStats(tocData), diagnostics };
           }
@@ -330,8 +480,10 @@ H6: ${stats.byLevel.h6}`;
     });
   }
   function formatListItems(tocData, options) {
-    return filterItems(tocData, options).map((item, visibleIndex) => {
-      const indent = buildIndent(levelToDepth(item.level, options.minHeadingLevel), options);
+    const filteredItems = filterItems(tocData, options);
+    const baseLevel = getEffectiveBaseHeadingLevel(filteredItems, options.minHeadingLevel);
+    return filteredItems.map((item, visibleIndex) => {
+      const indent = buildIndent(getHeadingDepth(item.level, baseLevel), options);
       const marker = options.orderedList ? `${visibleIndex + 1}.` : "-";
       const text = escapeText(item.text);
       if (!options.includeLinks) {
@@ -342,8 +494,10 @@ H6: ${stats.byLevel.h6}`;
     });
   }
   function formatPlainItems(tocData, options) {
-    return filterItems(tocData, options).map((item, visibleIndex) => {
-      const indent = buildIndent(levelToDepth(item.level, options.minHeadingLevel), options);
+    const filteredItems = filterItems(tocData, options);
+    const baseLevel = getEffectiveBaseHeadingLevel(filteredItems, options.minHeadingLevel);
+    return filteredItems.map((item, visibleIndex) => {
+      const indent = buildIndent(getHeadingDepth(item.level, baseLevel), options);
       const marker = options.orderedList ? `${visibleIndex + 1}.` : "-";
       const text = escapeText(item.text);
       const href = options.includeLinks ? buildPublishedUrl(item.id) : null;
@@ -714,62 +868,8 @@ ${items.join("\n")}
       if (sidePanelMutationObserver) return;
       sidePanelMutationObserver = new MutationObserver(() => notifySidePanelActiveHeading());
       sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
-    }, isLikelyNonArticleHeading = function(text) {
-      const normalized = text.replace(/\s+/g, " ").trim();
-      const noisePatterns = [
-        /^記事を高評価したユーザー$/,
-        /^人気記事$/,
-        /^ピックアップされています$/,
-        /^購入者のコメント$/,
-        /^こちらもおすすめ$/,
-        /^おすすめ$/,
-        /^関連記事$/,
-        /^コメント$/,
-        /^サポート$/,
-        /^クリエイター$/,
-        /^マガジン$/
-      ];
-      return noisePatterns.some((pattern) => pattern.test(normalized));
-    }, isLikelyArticleHeading = function(element) {
-      const text = (element.textContent ?? "").trim();
-      if (!text || text === "\u76EE\u6B21" || isLikelyNonArticleHeading(text)) return false;
-      const rect = element.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return false;
-      const articleLikeRoot = element.closest("article, main, [class*=article], [class*=note-common-styles], [class*=body], [class*=content]");
-      if (!articleLikeRoot) return false;
-      const excludedRoot = element.closest("aside, nav, footer, header, [class*=recommend], [class*=related], [class*=comment], [class*=profile], [class*=like], [class*=popular]");
-      if (excludedRoot && !excludedRoot.closest("article")) return false;
-      return true;
     }, buildFallbackSidePanelItems = function() {
-      const selectors = [
-        "article h1, article h2, article h3, article h4, article h5, article h6",
-        "main article h1, main article h2, main article h3, main article h4, main article h5, main article h6",
-        "main h1, main h2, main h3, main h4, main h5, main h6",
-        "[class*=note-common-styles] h1, [class*=note-common-styles] h2, [class*=note-common-styles] h3, [class*=note-common-styles] h4, [class*=note-common-styles] h5, [class*=note-common-styles] h6",
-        "[class*=article] h1, [class*=article] h2, [class*=article] h3, [class*=article] h4, [class*=article] h5, [class*=article] h6"
-      ];
-      let headingElements = [];
-      for (const selector of selectors) {
-        headingElements = Array.from(document.querySelectorAll(selector)).filter(isLikelyArticleHeading);
-        if (headingElements.length > 0) break;
-      }
-      const seen = /* @__PURE__ */ new Set();
-      const uniqueHeadings = headingElements.filter((element) => {
-        if (seen.has(element)) return false;
-        seen.add(element);
-        return true;
-      });
-      return uniqueHeadings.map((element, index) => {
-        if (!element.id) element.id = `note-toc-fallback-${index + 1}`;
-        const level = element.tagName.toLowerCase();
-        return {
-          index,
-          level: level === "h1" ? "h2" : level,
-          text: (element.textContent ?? "").replace(/\s+/g, " ").trim(),
-          id: element.id,
-          source: /^https:\/\/editor\.note\.com\//.test(location.href) ? "editor" : "published"
-        };
-      });
+      return collectNoteArticleToc(isEditorPage(location.href) ? "editor" : "published");
     }, jumpToSidePanelItem = function(id, index) {
       if (id === "__NOTE_TOC_TOP__") {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -794,7 +894,7 @@ ${items.join("\n")}
       sidePanelActiveId = target.id || id;
       void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
     };
-    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText, isSupportedSidePanelPage2 = isSupportedSidePanelPage, getHeadingElementByTocItem2 = getHeadingElementByTocItem, getActiveHeadingIdFromViewport2 = getActiveHeadingIdFromViewport, notifySidePanelActiveHeading2 = notifySidePanelActiveHeading, attachSidePanelScrollSync2 = attachSidePanelScrollSync, attachSidePanelMutationObserver2 = attachSidePanelMutationObserver, isLikelyNonArticleHeading2 = isLikelyNonArticleHeading, isLikelyArticleHeading2 = isLikelyArticleHeading, buildFallbackSidePanelItems2 = buildFallbackSidePanelItems, jumpToSidePanelItem2 = jumpToSidePanelItem;
+    jumpToHeading2 = jumpToHeading, downloadText2 = downloadText, isSupportedSidePanelPage2 = isSupportedSidePanelPage, getHeadingElementByTocItem2 = getHeadingElementByTocItem, getActiveHeadingIdFromViewport2 = getActiveHeadingIdFromViewport, notifySidePanelActiveHeading2 = notifySidePanelActiveHeading, attachSidePanelScrollSync2 = attachSidePanelScrollSync, attachSidePanelMutationObserver2 = attachSidePanelMutationObserver, buildFallbackSidePanelItems2 = buildFallbackSidePanelItems, jumpToSidePanelItem2 = jumpToSidePanelItem;
     window.__NOTE_TOC_EXPORTER_BOOTED__ = true;
     let isAutoRunning = false;
     async function copyText(text) {
@@ -949,8 +1049,6 @@ note\u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\
   var notifySidePanelActiveHeading2;
   var attachSidePanelScrollSync2;
   var attachSidePanelMutationObserver2;
-  var isLikelyNonArticleHeading2;
-  var isLikelyArticleHeading2;
   var buildFallbackSidePanelItems2;
   var jumpToSidePanelItem2;
 })();

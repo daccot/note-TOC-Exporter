@@ -32,7 +32,7 @@
 2. `npm run build`
 3. Chrome で `chrome://extensions` を開く
 4. デベロッパーモードを ON
-5. `Load unpacked` でこのフォルダを選ぶ
+5. `Load unpacked` で `dist/` フォルダを選ぶ
 
 ## 開発コマンド
 

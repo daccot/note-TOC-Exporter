@@ -33,6 +33,96 @@
     }
   };
 
+  // src/utils.ts
+  function mergeOptions(raw = {}) {
+    const headingColors = raw.headingColors && typeof raw.headingColors === "object" ? { ...DEFAULT_OPTIONS.headingColors, ...raw.headingColors } : DEFAULT_OPTIONS.headingColors;
+    return {
+      exportFormat: raw.exportFormat ?? DEFAULT_OPTIONS.exportFormat,
+      orderedList: typeof raw.orderedList === "boolean" ? raw.orderedList : DEFAULT_OPTIONS.orderedList,
+      indentStyle: raw.indentStyle ?? DEFAULT_OPTIONS.indentStyle,
+      spacesPerLevel: Number.isFinite(raw.spacesPerLevel) ? Number(raw.spacesPerLevel) : DEFAULT_OPTIONS.spacesPerLevel,
+      includeLinks: typeof raw.includeLinks === "boolean" ? raw.includeLinks : DEFAULT_OPTIONS.includeLinks,
+      minHeadingLevel: raw.minHeadingLevel ?? DEFAULT_OPTIONS.minHeadingLevel,
+      includeTitle: typeof raw.includeTitle === "boolean" ? raw.includeTitle : DEFAULT_OPTIONS.includeTitle,
+      includeUrl: typeof raw.includeUrl === "boolean" ? raw.includeUrl : DEFAULT_OPTIONS.includeUrl,
+      includePublishedAt: typeof raw.includePublishedAt === "boolean" ? raw.includePublishedAt : DEFAULT_OPTIONS.includePublishedAt,
+      includeStats: typeof raw.includeStats === "boolean" ? raw.includeStats : DEFAULT_OPTIONS.includeStats,
+      autoRun: typeof raw.autoRun === "boolean" ? raw.autoRun : DEFAULT_OPTIONS.autoRun,
+      exclusionRules: Array.isArray(raw.exclusionRules) ? raw.exclusionRules.filter(Boolean) : DEFAULT_OPTIONS.exclusionRules,
+      template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
+      uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
+      showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
+      showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
+      enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
+      collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
+      backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
+      backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
+      backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
+      headingColors
+    };
+  }
+
+  // src/headings.ts
+  var NOTE_HEADING_SELECTORS = [
+    "article h2",
+    "article h3",
+    "article h4",
+    "article h5",
+    "article h6",
+    "main h2",
+    "main h3",
+    "main h4",
+    "main h5",
+    "main h6",
+    '[data-name="body"] h2',
+    '[data-name="body"] h3',
+    '[data-name="body"] h4',
+    '[data-name="body"] h5',
+    '[data-name="body"] h6',
+    ".note-common-styles__textnote-body h2",
+    ".note-common-styles__textnote-body h3",
+    ".note-common-styles__textnote-body h4",
+    ".note-common-styles__textnote-body h5",
+    ".note-common-styles__textnote-body h6",
+    '[class*="note-common-styles"] h2',
+    '[class*="note-common-styles"] h3',
+    '[class*="note-common-styles"] h4',
+    '[class*="note-common-styles"] h5',
+    '[class*="note-common-styles"] h6'
+  ].join(", ");
+  var EXCLUDED_CONTAINER_SELECTOR = [
+    "nav",
+    "header",
+    "footer",
+    "aside",
+    "dialog",
+    '[role="dialog"]',
+    ".modal",
+    '[class*="comment"]',
+    '[class*="recommend"]',
+    '[class*="related"]',
+    '[class*="profile"]',
+    '[class*="popular"]'
+  ].join(", ");
+  var ARTICLE_ROOT_SELECTOR = [
+    "article",
+    "main",
+    '[data-name="body"]',
+    '[class*="article"]',
+    '[class*="note-common-styles"]',
+    '[class*="body"]',
+    '[class*="content"]'
+  ].join(", ");
+  function getHeadingLevelValue(level) {
+    const match = level.match(/^h([2-6])$/i);
+    return match ? Number(match[1]) : null;
+  }
+  function getBaseHeadingLevel(items) {
+    const levels = items.map((item) => getHeadingLevelValue(item.level)).filter((level) => level !== null);
+    const baseLevel = levels.length > 0 ? Math.min(...levels) : 2;
+    return `h${baseLevel}`;
+  }
+
   // src/i18n.ts
   var messages = {
     ja: {
@@ -95,35 +185,6 @@
   function t(language, key) {
     const resolved = resolveLanguage(language);
     return messages[resolved][key];
-  }
-
-  // src/utils.ts
-  function mergeOptions(raw = {}) {
-    const headingColors = raw.headingColors && typeof raw.headingColors === "object" ? { ...DEFAULT_OPTIONS.headingColors, ...raw.headingColors } : DEFAULT_OPTIONS.headingColors;
-    return {
-      exportFormat: raw.exportFormat ?? DEFAULT_OPTIONS.exportFormat,
-      orderedList: typeof raw.orderedList === "boolean" ? raw.orderedList : DEFAULT_OPTIONS.orderedList,
-      indentStyle: raw.indentStyle ?? DEFAULT_OPTIONS.indentStyle,
-      spacesPerLevel: Number.isFinite(raw.spacesPerLevel) ? Number(raw.spacesPerLevel) : DEFAULT_OPTIONS.spacesPerLevel,
-      includeLinks: typeof raw.includeLinks === "boolean" ? raw.includeLinks : DEFAULT_OPTIONS.includeLinks,
-      minHeadingLevel: raw.minHeadingLevel ?? DEFAULT_OPTIONS.minHeadingLevel,
-      includeTitle: typeof raw.includeTitle === "boolean" ? raw.includeTitle : DEFAULT_OPTIONS.includeTitle,
-      includeUrl: typeof raw.includeUrl === "boolean" ? raw.includeUrl : DEFAULT_OPTIONS.includeUrl,
-      includePublishedAt: typeof raw.includePublishedAt === "boolean" ? raw.includePublishedAt : DEFAULT_OPTIONS.includePublishedAt,
-      includeStats: typeof raw.includeStats === "boolean" ? raw.includeStats : DEFAULT_OPTIONS.includeStats,
-      autoRun: typeof raw.autoRun === "boolean" ? raw.autoRun : DEFAULT_OPTIONS.autoRun,
-      exclusionRules: Array.isArray(raw.exclusionRules) ? raw.exclusionRules.filter(Boolean) : DEFAULT_OPTIONS.exclusionRules,
-      template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
-      uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
-      showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
-      showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
-      enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
-      collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
-      backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
-      backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
-      backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
-      headingColors
-    };
   }
 
   // src/storage.ts
@@ -207,38 +268,45 @@
     currentItems = [];
     rawItems = [];
   }
+  function getBaseHeadingLevel2(items) {
+    const contentItems = items.filter((item) => item.level !== "top" && item.level !== "bottom");
+    return getBaseHeadingLevel(contentItems);
+  }
   function annotateHierarchy(items) {
-    let currentH2Id = null;
-    const h2WithChildren = /* @__PURE__ */ new Set();
+    const baseLevel = getBaseHeadingLevel2(items);
+    let currentRootId = null;
+    const rootsWithChildren = /* @__PURE__ */ new Set();
     const annotated = items.map((item) => {
-      if (item.level === "h2") {
-        currentH2Id = item.id ?? `h2-index-${item.index}`;
+      if (item.level === "top" || item.level === "bottom") return item;
+      if (item.level === baseLevel) {
+        currentRootId = item.id ?? `${baseLevel}-index-${item.index}`;
         return { ...item, parentH2Id: null };
       }
-      if (item.level !== "top" && item.level !== "bottom" && currentH2Id) {
-        h2WithChildren.add(currentH2Id);
-        return { ...item, parentH2Id: currentH2Id };
+      if (currentRootId) {
+        rootsWithChildren.add(currentRootId);
+        return { ...item, parentH2Id: currentRootId };
       }
-      return item;
+      return { ...item, parentH2Id: null };
     });
     return annotated.map((item) => {
-      if (item.level === "h2") {
-        const h2Key = item.id ?? `h2-index-${item.index}`;
-        return { ...item, hasChildren: h2WithChildren.has(h2Key) };
+      if (item.level === baseLevel) {
+        const key = item.id ?? `${baseLevel}-index-${item.index}`;
+        return { ...item, hasChildren: rootsWithChildren.has(key) };
       }
       return item;
     });
   }
   function getH2Key(item) {
-    if (item.level !== "h2") return item.parentH2Id ?? null;
-    return item.id ?? `h2-index-${item.index}`;
+    const baseLevel = getBaseHeadingLevel2(rawItems.length > 0 ? rawItems : currentItems);
+    if (item.level === "top" || item.level === "bottom") return null;
+    if (item.level !== baseLevel) return item.parentH2Id ?? null;
+    return item.id ?? `${baseLevel}-index-${item.index}`;
   }
   function shouldShowItem(item) {
     if (item.level === "top" || item.level === "bottom") return true;
-    if (item.level === "h2") return true;
+    if (!item.parentH2Id) return true;
     if (currentOptions.showSubHeadings) return true;
-    const parent = item.parentH2Id ?? "";
-    return Boolean(parent && expandedH2Ids.has(parent));
+    return expandedH2Ids.has(item.parentH2Id);
   }
   function visibleContentItems(items) {
     return annotateHierarchy(items).filter(shouldShowItem);
@@ -265,13 +333,15 @@ ${count} ${msg("headings")}`;
     if (manuallyChangedExpansion) return;
     if (!currentOptions.enableH2Collapse) return;
     if (!currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault) return;
-    const h2Items = annotateHierarchy(items).filter((item) => item.level === "h2" && item.hasChildren);
+    const baseLevel = getBaseHeadingLevel2(items);
+    const rootItems = annotateHierarchy(items).filter((item) => item.level === baseLevel && item.hasChildren);
     expandedH2Ids = new Set(
-      h2Items.filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault).map((item) => item.id ?? `h2-index-${item.index}`)
+      rootItems.filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault).map((item) => item.id ?? `${baseLevel}-index-${item.index}`)
     );
   }
   function getExpandableH2Ids() {
-    return annotateHierarchy(rawItems).filter((item) => item.level === "h2" && item.hasChildren).map((item) => item.id ?? `h2-index-${item.index}`);
+    const baseLevel = getBaseHeadingLevel2(rawItems);
+    return annotateHierarchy(rawItems).filter((item) => item.level === baseLevel && item.hasChildren).map((item) => item.id ?? `${baseLevel}-index-${item.index}`);
   }
   function expandAll() {
     manuallyChangedExpansion = true;
@@ -342,7 +412,7 @@ ${count} ${msg("headings")}`;
       button.dataset.index = String(item.index);
       const collapse = document.createElement("button");
       collapse.type = "button";
-      if (currentOptions.enableH2Collapse && item.level === "h2" && item.hasChildren && h2Key) {
+      if (currentOptions.enableH2Collapse && item.hasChildren && h2Key) {
         collapse.className = "collapse-toggle";
         collapse.dataset.h2Id = h2Key;
         collapse.textContent = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? "\u2212" : "+";
@@ -432,10 +502,13 @@ ${count} ${msg("headings")}`;
     return currentItems.filter((item) => indexes.has(item.index));
   }
   function formatSelectedMarkdown(items) {
+    const contentItems = currentItems.filter((item) => item.level !== "top" && item.level !== "bottom");
+    const baseLevelNumber = contentItems.length > 0 ? Math.min(...contentItems.map((item) => Number(String(item.level).slice(1))).filter((level) => Number.isFinite(level))) : 2;
     return items.map((item) => {
       if (item.level === "top") return `- [${item.text}](#top)`;
       if (item.level === "bottom") return `- [${item.text}](#bottom)`;
-      const depth = currentOptions.showSubHeadings || item.parentH2Id ? Math.max(0, Number(String(item.level).slice(1)) - 2) : 0;
+      const levelNumber = Number(String(item.level).slice(1));
+      const depth = Math.max(0, levelNumber - baseLevelNumber);
       const indent = "  ".repeat(depth);
       if (currentOptions.includeLinks && item.id) return `${indent}- [${item.text}](#${encodeURIComponent(item.id)})`;
       return `${indent}- ${item.text}`;

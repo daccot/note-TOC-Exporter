@@ -1,3 +1,4 @@
+import { collectNoteArticleToc } from './headings';
 import { escapeText, normalizeLevel } from './utils';
 import type { ArticleMeta, DiagnosticEntry, TocItem, TocStats } from './types';
 
@@ -80,6 +81,16 @@ function getEditorTocData(diagnostics: DiagnosticEntry[]): TocItem[] {
       };
     })
     .filter((item) => item.text);
+}
+
+function getEditorFallbackTocData(diagnostics: DiagnosticEntry[]): TocItem[] {
+  const tocData = collectNoteArticleToc('editor');
+  if (tocData.length === 0) {
+    throw new Error('編集画面の本文見出しが見つかりません。note 側のDOM変更の可能性あるで。');
+  }
+
+  pushDiagnostic(diagnostics, 'editor-fallback-headings', `Collected ${tocData.length} heading(s) from editor body.`);
+  return tocData;
 }
 
 function getPublishedTocItems(diagnostics: DiagnosticEntry[]): HTMLLIElement[] {
@@ -176,6 +187,12 @@ function resolvePublishedId(item: HTMLLIElement, headingMap: Map<string, HTMLEle
 }
 
 function getPublishedTocData(diagnostics: DiagnosticEntry[]): TocItem[] {
+  const articleHeadings = collectNoteArticleToc('published');
+  if (articleHeadings.length > 0) {
+    pushDiagnostic(diagnostics, 'published-body-headings', `Collected ${articleHeadings.length} heading(s) from article body.`);
+    return articleHeadings;
+  }
+
   const tocItems = getPublishedTocItems(diagnostics);
   if (tocItems.length === 0) {
     throw new Error('公開画面の TOC 項目が見つかりません。note 側のDOM変更の可能性あるで。');
@@ -204,7 +221,14 @@ export async function waitForTocData(url: string): Promise<ExtractionResult> {
       pushDiagnostic(diagnostics, 'attempt', `Attempt ${attempt + 1}/${maxAttempts} for ${url}`);
 
       if (/^https:\/\/editor\.note\.com\//.test(url)) {
-        const tocData = getEditorTocData(diagnostics);
+        let tocData: TocItem[];
+        try {
+          tocData = getEditorTocData(diagnostics);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          pushDiagnostic(diagnostics, 'editor-fallback', message, 'warn');
+          tocData = getEditorFallbackTocData(diagnostics);
+        }
         if (tocData.length > 0) {
           return { label: '編集画面', tocData, meta: getMeta(diagnostics), stats: getStats(tocData), diagnostics };
         }

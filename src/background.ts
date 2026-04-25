@@ -25,7 +25,7 @@ async function runOnTab(tab: chrome.tabs.Tab, optionsOverride?: Partial<ExportOp
 async function ensureContentScript(tabId: number): Promise<void> {
   await chrome.scripting.executeScript({
     target: { tabId },
-    files: ['dist/content.js']
+    files: ['content.js']
   });
 }
 
