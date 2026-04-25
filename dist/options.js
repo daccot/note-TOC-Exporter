@@ -4,7 +4,6 @@
   var STORAGE_KEY = "noteTocExporterOptions";
   var PROFILES_STORAGE_KEY = "noteTocExporterProfiles";
   var HISTORY_STORAGE_KEY = "noteTocExporterHistory";
-  var DEFAULT_TEMPLATE = `{{toc}}`;
   var DEFAULT_OPTIONS = {
     exportFormat: "markdown",
     orderedList: false,
@@ -18,40 +17,39 @@
     includeStats: false,
     autoRun: false,
     exclusionRules: [],
-    template: DEFAULT_TEMPLATE
+    template: "{{title_block}}\n{{toc}}",
+    uiLanguage: "auto",
+    showTopBottomItems: true,
+    headingColors: {
+      h2: "#eff6ff",
+      h3: "#f0fdf4",
+      h4: "#fff7ed",
+      h5: "#f5f3ff",
+      h6: "#f8fafc"
+    }
   };
   var HEADING_LEVELS = ["h2", "h3", "h4", "h5", "h6"];
 
   // src/utils.ts
-  function escapeText(text) {
-    return String(text ?? "").replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
-  }
-  function normalizeLevel(level) {
-    if (typeof level === "string") {
-      const normalized = level.toLowerCase();
-      if (HEADING_LEVELS.includes(normalized)) return normalized;
-      if (/^[2-6]$/.test(normalized)) return `h${normalized}`;
-    }
-    if (typeof level === "number" && level >= 2 && level <= 6) {
-      return `h${level}`;
-    }
-    return "h2";
-  }
-  function mergeOptions(input) {
+  function mergeOptions(raw = {}) {
+    const headingColors = raw.headingColors && typeof raw.headingColors === "object" ? { ...DEFAULT_OPTIONS.headingColors, ...raw.headingColors } : DEFAULT_OPTIONS.headingColors;
     return {
-      exportFormat: input?.exportFormat === "html" || input?.exportFormat === "plain" ? input.exportFormat : "markdown",
-      orderedList: input?.orderedList ?? false,
-      indentStyle: input?.indentStyle === "fullWidth" ? "fullWidth" : "spaces",
-      spacesPerLevel: Math.max(1, Math.min(8, input?.spacesPerLevel ?? 2)),
-      includeLinks: input?.includeLinks ?? true,
-      minHeadingLevel: normalizeLevel(input?.minHeadingLevel ?? "h2"),
-      includeTitle: input?.includeTitle ?? true,
-      includeUrl: input?.includeUrl ?? true,
-      includePublishedAt: input?.includePublishedAt ?? true,
-      includeStats: input?.includeStats ?? false,
-      autoRun: input?.autoRun ?? false,
-      exclusionRules: Array.isArray(input?.exclusionRules) ? input.exclusionRules.map((rule) => escapeText(rule)).filter(Boolean) : [],
-      template: typeof input?.template === "string" && input.template.trim() ? input.template : DEFAULT_TEMPLATE
+      exportFormat: raw.exportFormat ?? DEFAULT_OPTIONS.exportFormat,
+      orderedList: typeof raw.orderedList === "boolean" ? raw.orderedList : DEFAULT_OPTIONS.orderedList,
+      indentStyle: raw.indentStyle ?? DEFAULT_OPTIONS.indentStyle,
+      spacesPerLevel: Number.isFinite(raw.spacesPerLevel) ? Number(raw.spacesPerLevel) : DEFAULT_OPTIONS.spacesPerLevel,
+      includeLinks: typeof raw.includeLinks === "boolean" ? raw.includeLinks : DEFAULT_OPTIONS.includeLinks,
+      minHeadingLevel: raw.minHeadingLevel ?? DEFAULT_OPTIONS.minHeadingLevel,
+      includeTitle: typeof raw.includeTitle === "boolean" ? raw.includeTitle : DEFAULT_OPTIONS.includeTitle,
+      includeUrl: typeof raw.includeUrl === "boolean" ? raw.includeUrl : DEFAULT_OPTIONS.includeUrl,
+      includePublishedAt: typeof raw.includePublishedAt === "boolean" ? raw.includePublishedAt : DEFAULT_OPTIONS.includePublishedAt,
+      includeStats: typeof raw.includeStats === "boolean" ? raw.includeStats : DEFAULT_OPTIONS.includeStats,
+      autoRun: typeof raw.autoRun === "boolean" ? raw.autoRun : DEFAULT_OPTIONS.autoRun,
+      exclusionRules: Array.isArray(raw.exclusionRules) ? raw.exclusionRules.filter(Boolean) : DEFAULT_OPTIONS.exclusionRules,
+      template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
+      uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
+      showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
+      headingColors
     };
   }
   function makeHistoryEntryId() {
@@ -168,7 +166,16 @@
       includeStats: byId("includeStats").checked,
       autoRun: byId("autoRun").checked,
       exclusionRules: byId("exclusionRules").value.split(/\r?\n/),
-      template: byId("template").value
+      template: byId("template").value,
+      uiLanguage: byId("uiLanguage").value,
+      showTopBottomItems: byId("showTopBottomItems").value === "true",
+      headingColors: {
+        h2: byId("headingColorH2").value,
+        h3: byId("headingColorH3").value,
+        h4: byId("headingColorH4").value,
+        h5: byId("headingColorH5").value,
+        h6: byId("headingColorH6").value
+      }
     });
   }
   function writeForm(options) {
@@ -185,13 +192,20 @@
     byId("autoRun").checked = options.autoRun;
     byId("exclusionRules").value = options.exclusionRules.join("\n");
     byId("template").value = options.template;
+    byId("uiLanguage").value = options.uiLanguage;
+    byId("showTopBottomItems").value = String(options.showTopBottomItems);
+    byId("headingColorH2").value = options.headingColors.h2;
+    byId("headingColorH3").value = options.headingColors.h3;
+    byId("headingColorH4").value = options.headingColors.h4;
+    byId("headingColorH5").value = options.headingColors.h5;
+    byId("headingColorH6").value = options.headingColors.h6;
   }
   async function renderProfiles() {
     const profiles = await loadProfiles();
     const list = byId("profiles");
     const applySelect = byId("profile-select");
     list.innerHTML = "";
-    applySelect.innerHTML = '<option value="">\u9078\u3093\u3067\u306A</option>';
+    applySelect.innerHTML = '<option value="">\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044</option>';
     profiles.forEach((profile) => {
       const option = document.createElement("option");
       option.value = profile.id;
@@ -226,7 +240,7 @@
       copyButton.textContent = "\u518D\u30B3\u30D4\u30FC";
       copyButton.addEventListener("click", async () => {
         await navigator.clipboard.writeText(entry.output);
-        setStatus(`\u5C65\u6B74\u304B\u3089 ${entry.title} \u3092\u30B3\u30D4\u30FC\u3057\u305F\u3067\u3002`);
+        setStatus(`\u5C65\u6B74\u304B\u3089 ${entry.title} \u3092\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F\u3002`);
       });
       const downloadButton = document.createElement("button");
       downloadButton.type = "button";
@@ -265,18 +279,18 @@
       event.preventDefault();
       const options = readForm();
       await saveOptions(options);
-      setStatus("\u65E2\u5B9A\u5024\u3092\u4FDD\u5B58\u3057\u305F\u3067\u3002");
+      setStatus("\u8A2D\u5B9A\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002");
     });
     byId("reset-button").addEventListener("click", async () => {
       const options = mergeOptions(DEFAULT_OPTIONS);
       writeForm(options);
       await saveOptions(options);
-      setStatus("\u521D\u671F\u5024\u306B\u623B\u3057\u305F\u3067\u3002");
+      setStatus("\u521D\u671F\u8A2D\u5B9A\u306B\u623B\u3057\u307E\u3057\u305F\u3002");
     });
     byId("save-profile-button").addEventListener("click", async () => {
       const name = byId("profile-name").value.trim();
       if (!name) {
-        setStatus("\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u540D\u5165\u308C\u3066\u306A\u3002");
+        setStatus("\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u540D\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
         return;
       }
       await upsertProfile(name, readForm());
@@ -286,7 +300,7 @@
     byId("apply-profile-button").addEventListener("click", async () => {
       const id = byId("profile-select").value;
       if (!id) {
-        setStatus("\u9069\u7528\u3059\u308B\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u9078\u3093\u3067\u306A\u3002");
+        setStatus("\u9069\u7528\u3059\u308B\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
         return;
       }
       const profile = (await loadProfiles()).find((item) => item.id === id);
@@ -300,12 +314,12 @@
       if (!id) return;
       await deleteProfile(id);
       await renderProfiles();
-      setStatus("\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u6D88\u3057\u305F\u3067\u3002");
+      setStatus("\u30D7\u30ED\u30D5\u30A1\u30A4\u30EB\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002");
     });
     byId("delete-history-button").addEventListener("click", async () => {
       const ids = getSelectedHistoryIds();
       if (ids.length === 0) {
-        setStatus("\u524A\u9664\u3059\u308B\u5C65\u6B74\u3092\u9078\u3093\u3067\u306A\u3002");
+        setStatus("\u524A\u9664\u3059\u308B\u5C65\u6B74\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
         return;
       }
       await deleteHistoryEntries(ids);
@@ -314,16 +328,16 @@
     });
     byId("select-all-history-button").addEventListener("click", () => {
       setAllHistorySelection(true);
-      setStatus("\u5C65\u6B74\u3092\u5168\u90E8\u9078\u629E\u3057\u305F\u3067\u3002");
+      setStatus("\u5C65\u6B74\u3092\u5168\u9078\u629E\u3057\u307E\u3057\u305F\u3002");
     });
     byId("clear-history-selection-button").addEventListener("click", () => {
       setAllHistorySelection(false);
-      setStatus("\u5C65\u6B74\u306E\u9078\u629E\u3092\u5168\u90E8\u5916\u3057\u305F\u3067\u3002");
+      setStatus("\u5C65\u6B74\u306E\u9078\u629E\u3092\u5168\u89E3\u9664\u3057\u307E\u3057\u305F\u3002");
     });
     byId("delete-all-history-button").addEventListener("click", async () => {
       const ids = Array.from(document.querySelectorAll("[data-history-id]")).map((element) => element.value);
       if (ids.length === 0) {
-        setStatus("\u6D88\u3059\u5C65\u6B74\u304C\u7121\u3044\u3067\u3002");
+        setStatus("\u524A\u9664\u5BFE\u8C61\u306E\u5C65\u6B74\u304C\u3042\u308A\u307E\u305B\u3093\u3002");
         return;
       }
       await deleteHistoryEntries(ids);

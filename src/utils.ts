@@ -1,3 +1,4 @@
+import { DEFAULT_OPTIONS } from './constants';
 import { DEFAULT_TEMPLATE, HEADING_LEVELS } from './constants';
 import type { ArticleMeta, ExportHistoryEntry, ExportOptions, HeadingLevel, TocStats } from './types';
 
@@ -39,23 +40,32 @@ export function formatStats(stats: TocStats): string {
   return `Total: ${stats.total}\nH2: ${stats.byLevel.h2}\nH3: ${stats.byLevel.h3}\nH4: ${stats.byLevel.h4}\nH5: ${stats.byLevel.h5}\nH6: ${stats.byLevel.h6}`;
 }
 
-export function mergeOptions(input?: Partial<ExportOptions>): ExportOptions {
+export function mergeOptions(raw: Partial<ExportOptions> = {}): ExportOptions {
+  const headingColors = raw.headingColors && typeof raw.headingColors === 'object'
+    ? { ...DEFAULT_OPTIONS.headingColors, ...raw.headingColors }
+    : DEFAULT_OPTIONS.headingColors;
+
   return {
-    exportFormat: input?.exportFormat === 'html' || input?.exportFormat === 'plain' ? input.exportFormat : 'markdown',
-    orderedList: input?.orderedList ?? false,
-    indentStyle: input?.indentStyle === 'fullWidth' ? 'fullWidth' : 'spaces',
-    spacesPerLevel: Math.max(1, Math.min(8, input?.spacesPerLevel ?? 2)),
-    includeLinks: input?.includeLinks ?? true,
-    minHeadingLevel: normalizeLevel(input?.minHeadingLevel ?? 'h2'),
-    includeTitle: input?.includeTitle ?? true,
-    includeUrl: input?.includeUrl ?? true,
-    includePublishedAt: input?.includePublishedAt ?? true,
-    includeStats: input?.includeStats ?? false,
-    autoRun: input?.autoRun ?? false,
-    exclusionRules: Array.isArray(input?.exclusionRules)
-      ? input.exclusionRules.map((rule) => escapeText(rule)).filter(Boolean)
-      : [],
-    template: typeof input?.template === 'string' && input.template.trim() ? input.template : DEFAULT_TEMPLATE
+    exportFormat: raw.exportFormat ?? DEFAULT_OPTIONS.exportFormat,
+    orderedList: typeof raw.orderedList === 'boolean' ? raw.orderedList : DEFAULT_OPTIONS.orderedList,
+    indentStyle: raw.indentStyle ?? DEFAULT_OPTIONS.indentStyle,
+    spacesPerLevel: Number.isFinite(raw.spacesPerLevel) ? Number(raw.spacesPerLevel) : DEFAULT_OPTIONS.spacesPerLevel,
+    includeLinks: typeof raw.includeLinks === 'boolean' ? raw.includeLinks : DEFAULT_OPTIONS.includeLinks,
+    minHeadingLevel: raw.minHeadingLevel ?? DEFAULT_OPTIONS.minHeadingLevel,
+    includeTitle: typeof raw.includeTitle === 'boolean' ? raw.includeTitle : DEFAULT_OPTIONS.includeTitle,
+    includeUrl: typeof raw.includeUrl === 'boolean' ? raw.includeUrl : DEFAULT_OPTIONS.includeUrl,
+    includePublishedAt: typeof raw.includePublishedAt === 'boolean' ? raw.includePublishedAt : DEFAULT_OPTIONS.includePublishedAt,
+    includeStats: typeof raw.includeStats === 'boolean' ? raw.includeStats : DEFAULT_OPTIONS.includeStats,
+    autoRun: typeof raw.autoRun === 'boolean' ? raw.autoRun : DEFAULT_OPTIONS.autoRun,
+    exclusionRules: Array.isArray(raw.exclusionRules) ? raw.exclusionRules.filter(Boolean) : DEFAULT_OPTIONS.exclusionRules,
+    template: typeof raw.template === 'string' ? raw.template : DEFAULT_OPTIONS.template,
+    uiLanguage: raw.uiLanguage === 'ja' || raw.uiLanguage === 'en' || raw.uiLanguage === 'auto'
+      ? raw.uiLanguage
+      : DEFAULT_OPTIONS.uiLanguage,
+    showTopBottomItems: typeof raw.showTopBottomItems === 'boolean'
+      ? raw.showTopBottomItems
+      : DEFAULT_OPTIONS.showTopBottomItems,
+    headingColors
   };
 }
 

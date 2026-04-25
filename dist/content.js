@@ -6,7 +6,6 @@
   var STORAGE_KEY = "noteTocExporterOptions";
   var HISTORY_STORAGE_KEY = "noteTocExporterHistory";
   var HISTORY_LIMIT = 10;
-  var DEFAULT_TEMPLATE = `{{toc}}`;
   var DEFAULT_OPTIONS = {
     exportFormat: "markdown",
     orderedList: false,
@@ -20,7 +19,16 @@
     includeStats: false,
     autoRun: false,
     exclusionRules: [],
-    template: DEFAULT_TEMPLATE
+    template: "{{title_block}}\n{{toc}}",
+    uiLanguage: "auto",
+    showTopBottomItems: true,
+    headingColors: {
+      h2: "#eff6ff",
+      h3: "#f0fdf4",
+      h4: "#fff7ed",
+      h5: "#f5f3ff",
+      h6: "#f8fafc"
+    }
   };
   var HEADING_LEVELS = ["h2", "h3", "h4", "h5", "h6"];
 
@@ -53,21 +61,25 @@ H4: ${stats.byLevel.h4}
 H5: ${stats.byLevel.h5}
 H6: ${stats.byLevel.h6}`;
   }
-  function mergeOptions(input) {
+  function mergeOptions(raw = {}) {
+    const headingColors = raw.headingColors && typeof raw.headingColors === "object" ? { ...DEFAULT_OPTIONS.headingColors, ...raw.headingColors } : DEFAULT_OPTIONS.headingColors;
     return {
-      exportFormat: input?.exportFormat === "html" || input?.exportFormat === "plain" ? input.exportFormat : "markdown",
-      orderedList: input?.orderedList ?? false,
-      indentStyle: input?.indentStyle === "fullWidth" ? "fullWidth" : "spaces",
-      spacesPerLevel: Math.max(1, Math.min(8, input?.spacesPerLevel ?? 2)),
-      includeLinks: input?.includeLinks ?? true,
-      minHeadingLevel: normalizeLevel(input?.minHeadingLevel ?? "h2"),
-      includeTitle: input?.includeTitle ?? true,
-      includeUrl: input?.includeUrl ?? true,
-      includePublishedAt: input?.includePublishedAt ?? true,
-      includeStats: input?.includeStats ?? false,
-      autoRun: input?.autoRun ?? false,
-      exclusionRules: Array.isArray(input?.exclusionRules) ? input.exclusionRules.map((rule) => escapeText(rule)).filter(Boolean) : [],
-      template: typeof input?.template === "string" && input.template.trim() ? input.template : DEFAULT_TEMPLATE
+      exportFormat: raw.exportFormat ?? DEFAULT_OPTIONS.exportFormat,
+      orderedList: typeof raw.orderedList === "boolean" ? raw.orderedList : DEFAULT_OPTIONS.orderedList,
+      indentStyle: raw.indentStyle ?? DEFAULT_OPTIONS.indentStyle,
+      spacesPerLevel: Number.isFinite(raw.spacesPerLevel) ? Number(raw.spacesPerLevel) : DEFAULT_OPTIONS.spacesPerLevel,
+      includeLinks: typeof raw.includeLinks === "boolean" ? raw.includeLinks : DEFAULT_OPTIONS.includeLinks,
+      minHeadingLevel: raw.minHeadingLevel ?? DEFAULT_OPTIONS.minHeadingLevel,
+      includeTitle: typeof raw.includeTitle === "boolean" ? raw.includeTitle : DEFAULT_OPTIONS.includeTitle,
+      includeUrl: typeof raw.includeUrl === "boolean" ? raw.includeUrl : DEFAULT_OPTIONS.includeUrl,
+      includePublishedAt: typeof raw.includePublishedAt === "boolean" ? raw.includePublishedAt : DEFAULT_OPTIONS.includePublishedAt,
+      includeStats: typeof raw.includeStats === "boolean" ? raw.includeStats : DEFAULT_OPTIONS.includeStats,
+      autoRun: typeof raw.autoRun === "boolean" ? raw.autoRun : DEFAULT_OPTIONS.autoRun,
+      exclusionRules: Array.isArray(raw.exclusionRules) ? raw.exclusionRules.filter(Boolean) : DEFAULT_OPTIONS.exclusionRules,
+      template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
+      uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
+      showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
+      headingColors
     };
   }
   function matchesExclusionRule(text, rules) {
@@ -714,6 +726,18 @@ ${items.join("\n")}
         };
       });
     }, jumpToSidePanelItem = function(id, index) {
+      if (id === "__NOTE_TOC_TOP__") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        sidePanelActiveId = id;
+        void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
+        return;
+      }
+      if (id === "__NOTE_TOC_BOTTOM__") {
+        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+        sidePanelActiveId = id;
+        void chrome.runtime.sendMessage({ type: "NOTE_TOC_ACTIVE_HEADING_CHANGED", activeId: sidePanelActiveId }).catch(() => void 0);
+        return;
+      }
       let target = null;
       if (id) target = document.getElementById(id);
       if (!target && Number.isFinite(index ?? NaN)) {
@@ -764,7 +788,7 @@ ${items.join("\n")}
       const { label, tocData, meta, stats, diagnostics } = await waitForTocData(location.href);
       const { output, filename } = formatExport(tocData, meta, stats, options);
       if (!output.trim()) {
-        throw new Error("TOC\u306F\u53D6\u5F97\u3067\u304D\u305F\u3051\u3069\u3001\u51FA\u529B\u304C\u7A7A\u3084\u3063\u305F\u3002\u898B\u51FA\u3057\u8A2D\u5B9A\u304B\u30C6\u30F3\u30D7\u30EC\u898B\u76F4\u3057\u3066\u306A\u3002");
+        throw new Error("TOC\u306F\u53D6\u5F97\u3067\u304D\u307E\u3057\u305F\u304C\u3001\u51FA\u529B\u304C\u7A7A\u3067\u3059\u3002\u898B\u51FA\u3057\u8A2D\u5B9A\u307E\u305F\u306F\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002");
       }
       return { label, tocData, options, output, meta, stats, diagnostics, filename };
     }
@@ -806,7 +830,7 @@ ${items.join("\n")}
         const detail = error instanceof Error ? error.message : String(error);
         showErrorModal(`${detail}
 
-note \u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u3082\u3042\u308B\u3055\u3051\u3001\u4E0B\u306E\u8A3A\u65AD\u30ED\u30B0\u3068\u30BB\u30EC\u30AF\u30BF\u7D50\u679C\u3092\u898B\u3066\u306A\u3002`);
+note\u5074\u306EDOM\u5909\u66F4\u306E\u53EF\u80FD\u6027\u304C\u3042\u308A\u307E\u3059\u3002\u8A3A\u65AD\u30ED\u30B0\u3068\u30BB\u30EC\u30AF\u30BF\u7D50\u679C\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002`);
       } finally {
         isAutoRunning = false;
       }
