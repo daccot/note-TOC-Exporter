@@ -189,22 +189,51 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
   }
 
+  function isLikelyNonArticleHeading(text: string): boolean {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    const noisePatterns = [
+      /^記事を高評価したユーザー$/,
+      /^人気記事$/,
+      /^ピックアップされています$/,
+      /^購入者のコメント$/,
+      /^こちらもおすすめ$/,
+      /^おすすめ$/,
+      /^関連記事$/,
+      /^コメント$/,
+      /^サポート$/,
+      /^クリエイター$/,
+      /^マガジン$/
+    ];
+    return noisePatterns.some((pattern) => pattern.test(normalized));
+  }
+
+  function isLikelyArticleHeading(element: HTMLElement): boolean {
+    const text = (element.textContent ?? '').trim();
+    if (!text || text === '目次' || isLikelyNonArticleHeading(text)) return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+
+    const articleLikeRoot = element.closest('article, main, [class*=article], [class*=note-common-styles], [class*=body], [class*=content]');
+    if (!articleLikeRoot) return false;
+
+    const excludedRoot = element.closest('aside, nav, footer, header, [class*=recommend], [class*=related], [class*=comment], [class*=profile], [class*=like], [class*=popular]');
+    if (excludedRoot && !excludedRoot.closest('article')) return false;
+
+    return true;
+  }
+
   function buildFallbackSidePanelItems(): ExportResult['tocData'] {
     const selectors = [
       'article h1, article h2, article h3, article h4, article h5, article h6',
+      'main article h1, main article h2, main article h3, main article h4, main article h5, main article h6',
       'main h1, main h2, main h3, main h4, main h5, main h6',
-      '[class*=article] h1, [class*=article] h2, [class*=article] h3, [class*=article] h4, [class*=article] h5, [class*=article] h6',
-      'h1, h2, h3, h4, h5, h6'
+      '[class*=note-common-styles] h1, [class*=note-common-styles] h2, [class*=note-common-styles] h3, [class*=note-common-styles] h4, [class*=note-common-styles] h5, [class*=note-common-styles] h6',
+      '[class*=article] h1, [class*=article] h2, [class*=article] h3, [class*=article] h4, [class*=article] h5, [class*=article] h6'
     ];
 
     let headingElements: HTMLElement[] = [];
     for (const selector of selectors) {
-      headingElements = Array.from(document.querySelectorAll<HTMLElement>(selector))
-        .filter((element) => {
-          const text = (element.textContent ?? '').trim();
-          const rect = element.getBoundingClientRect();
-          return text.length > 0 && text !== '目次' && rect.width > 0 && rect.height > 0;
-        });
+      headingElements = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(isLikelyArticleHeading);
       if (headingElements.length > 0) break;
     }
 
@@ -221,7 +250,7 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
       return {
         index,
         level: level === 'h1' ? 'h2' : level as ExportResult['tocData'][number]['level'],
-        text: (element.textContent ?? '').trim(),
+        text: (element.textContent ?? '').replace(/\s+/g, ' ').trim(),
         id: element.id,
         source: /^https:\/\/editor\.note\.com\//.test(location.href) ? 'editor' : 'published'
       };

@@ -17,6 +17,7 @@ type SidePanelItem = {
   source: 'editor' | 'published' | 'system';
   parentH2Id?: string | null;
   hasChildren?: boolean;
+  generated?: boolean;
 };
 
 type SidePanelState = {
@@ -26,6 +27,7 @@ type SidePanelState = {
   title: string;
   activeId: string | null;
   items: SidePanelItem[];
+  generatedFromHeadings?: boolean;
   error?: string;
 };
 
@@ -37,14 +39,16 @@ const openModalButton = document.getElementById('openModal') as HTMLButtonElemen
 const copySelectedButton = document.getElementById('copySelected') as HTMLButtonElement;
 const selectAllButton = document.getElementById('selectAll') as HTMLButtonElement;
 const clearSelectionButton = document.getElementById('clearSelection') as HTMLButtonElement;
+const expandAllButton = document.getElementById('expandAll') as HTMLButtonElement;
+const collapseAllButton = document.getElementById('collapseAll') as HTMLButtonElement;
 const titleEl = document.getElementById('panelTitle') as HTMLHeadingElement;
 
 let currentTabId: number | null = null;
 let currentItems: SidePanelItem[] = [];
 let rawItems: SidePanelItem[] = [];
 let currentOptions: ExportOptions = DEFAULT_OPTIONS;
-let collapsedH2Ids = new Set<string>();
-let userToggledCollapse = false;
+let expandedH2Ids = new Set<string>();
+let manuallyChangedExpansion = false;
 
 function isSupportedUrl(url: string | undefined): boolean {
   return /^https:\/\/note\.com\//.test(url ?? '') || /^https:\/\/editor\.note\.com\//.test(url ?? '');
@@ -54,6 +58,9 @@ function msg(key: Parameters<typeof t>[1]): string {
   return t(currentOptions.uiLanguage, key);
 }
 
+function normalizeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function applyWallpaperTheme(): void {
   const root = document.documentElement;
@@ -72,9 +79,6 @@ function applyWallpaperTheme(): void {
 
   root.style.setProperty('--app-wallpaper', `url("${chrome.runtime.getURL('assets/default-wallpaper.jpg')}")`);
 }
-function normalizeError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 async function refreshOptions(): Promise<void> {
   currentOptions = mergeOptions(await loadOptions().catch(() => DEFAULT_OPTIONS));
@@ -85,11 +89,14 @@ async function refreshOptions(): Promise<void> {
   copySelectedButton.textContent = msg('copySelected');
   selectAllButton.textContent = msg('selectAll');
   clearSelectionButton.textContent = msg('clearSelection');
+  expandAllButton.textContent = msg('expandAll');
+  collapseAllButton.textContent = msg('collapseAll');
 }
 
-function setStatus(message: string, variant: 'normal' | 'warn' | 'loading' = 'normal'): void {
-  statusEl.className = variant === 'warn' ? 'status warn' : variant === 'loading' ? 'status loading' : 'status';
+function setStatus(message: string, variant: 'normal' | 'warn' | 'loading' | 'ok' = 'normal'): void {
+  statusEl.className = variant === 'warn' ? 'status warn' : variant === 'loading' ? 'status loading' : variant === 'ok' ? 'status ok' : 'status';
   statusEl.hidden = false;
+
   if (variant === 'loading') {
     statusEl.replaceChildren();
     const spinner = document.createElement('img');
@@ -101,6 +108,7 @@ function setStatus(message: string, variant: 'normal' | 'warn' | 'loading' = 'no
     statusEl.append(spinner, text);
     return;
   }
+
   statusEl.textContent = message;
 }
 
@@ -136,10 +144,21 @@ function annotateHierarchy(items: SidePanelItem[]): SidePanelItem[] {
   });
 }
 
-function filterByOptions(items: SidePanelItem[]): SidePanelItem[] {
-  const annotated = annotateHierarchy(items);
-  if (currentOptions.showSubHeadings) return annotated;
-  return annotated.filter((item) => item.level === 'h2');
+function getH2Key(item: SidePanelItem): string | null {
+  if (item.level !== 'h2') return item.parentH2Id ?? null;
+  return item.id ?? `h2-index-${item.index}`;
+}
+
+function shouldShowItem(item: SidePanelItem): boolean {
+  if (item.level === 'top' || item.level === 'bottom') return true;
+  if (item.level === 'h2') return true;
+  if (currentOptions.showSubHeadings) return true;
+  const parent = item.parentH2Id ?? '';
+  return Boolean(parent && expandedH2Ids.has(parent));
+}
+
+function visibleContentItems(items: SidePanelItem[]): SidePanelItem[] {
+  return annotateHierarchy(items).filter(shouldShowItem);
 }
 
 function setMeta(title: string, url: string, count: number): void {
@@ -148,7 +167,7 @@ function setMeta(title: string, url: string, count: number): void {
 }
 
 function getRenderableItems(items: SidePanelItem[]): SidePanelItem[] {
-  const filtered = filterByOptions(items);
+  const filtered = visibleContentItems(items);
   if (!currentOptions.showTopBottomItems) return filtered;
   return [
     { index: -1, level: 'top', text: msg('topOfPage'), id: '__NOTE_TOC_TOP__', source: 'system' },
@@ -162,40 +181,42 @@ function getItemColor(item: SidePanelItem): string {
   return currentOptions.headingColors[item.level] ?? DEFAULT_OPTIONS.headingColors[item.level];
 }
 
-function getH2Key(item: SidePanelItem): string | null {
-  if (item.level !== 'h2') return item.parentH2Id ?? null;
-  return item.id ?? `h2-index-${item.index}`;
-}
+function initializeExpansion(items: SidePanelItem[]): void {
+  if (manuallyChangedExpansion) return;
+  if (!currentOptions.enableH2Collapse) return;
+  if (!currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault) return;
 
-function initializeCollapse(items: SidePanelItem[]): void {
-  if (userToggledCollapse || !currentOptions.enableH2Collapse || !currentOptions.collapseH2ByDefault) return;
-  collapsedH2Ids = new Set(
-    items
-      .filter((item) => item.level === 'h2' && item.hasChildren)
+  const h2Items = annotateHierarchy(items).filter((item) => item.level === 'h2' && item.hasChildren);
+  expandedH2Ids = new Set(
+    h2Items
+      .filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault)
       .map((item) => item.id ?? `h2-index-${item.index}`)
   );
 }
 
-function applyCollapseVisibility(): void {
-  const rows = Array.from(tocEl.querySelectorAll<HTMLDivElement>('.toc-row'));
-  for (const row of rows) {
-    const parentH2Id = row.dataset.parentH2Id ?? '';
-    const hidden = Boolean(parentH2Id) && collapsedH2Ids.has(parentH2Id);
-    row.classList.toggle('hidden-by-collapse', hidden);
-  }
 
-  tocEl.querySelectorAll<HTMLButtonElement>('[data-role="collapse-toggle"]').forEach((button) => {
-    const h2Id = button.dataset.h2Id ?? '';
-    button.textContent = collapsedH2Ids.has(h2Id) ? '+' : '−';
-    button.title = collapsedH2Ids.has(h2Id) ? 'Expand' : 'Collapse';
-  });
+function getExpandableH2Ids(): string[] {
+  return annotateHierarchy(rawItems)
+    .filter((item) => item.level === 'h2' && item.hasChildren)
+    .map((item) => item.id ?? `h2-index-${item.index}`);
 }
 
-function toggleCollapse(h2Id: string): void {
-  userToggledCollapse = true;
-  if (collapsedH2Ids.has(h2Id)) collapsedH2Ids.delete(h2Id);
-  else collapsedH2Ids.add(h2Id);
-  applyCollapseVisibility();
+function expandAll(): void {
+  manuallyChangedExpansion = true;
+  expandedH2Ids = new Set(getExpandableH2Ids());
+  renderToc(rawItems, null, true);
+}
+
+function collapseAll(): void {
+  manuallyChangedExpansion = true;
+  expandedH2Ids = new Set<string>();
+  renderToc(rawItems, null, true);
+}
+function toggleExpansion(h2Id: string): void {
+  manuallyChangedExpansion = true;
+  if (expandedH2Ids.has(h2Id)) expandedH2Ids.delete(h2Id);
+  else expandedH2Ids.add(h2Id);
+  renderToc(rawItems, null, true);
 }
 
 function updateActiveHeading(nextActiveId: string | null): void {
@@ -222,10 +243,11 @@ function updateActiveHeading(nextActiveId: string | null): void {
   }
 }
 
-function renderToc(items: SidePanelItem[], nextActiveId: string | null): void {
+function renderToc(items: SidePanelItem[], nextActiveId: string | null, preserveExpansion = false): void {
   tocEl.replaceChildren();
+  rawItems = items;
+  if (!preserveExpansion) initializeExpansion(items);
   currentItems = getRenderableItems(items);
-  initializeCollapse(currentItems);
 
   if (currentItems.length === 0) {
     clearToc();
@@ -238,6 +260,7 @@ function renderToc(items: SidePanelItem[], nextActiveId: string | null): void {
     const h2Key = getH2Key(item);
     const row = document.createElement('div');
     row.className = `toc-row ${item.level}`;
+    if (item.parentH2Id) row.classList.add('child-row');
     row.style.backgroundColor = getItemColor(item);
     row.dataset.id = item.id ?? '';
     row.dataset.index = String(item.index);
@@ -257,14 +280,14 @@ function renderToc(items: SidePanelItem[], nextActiveId: string | null): void {
 
     const collapse = document.createElement('button');
     collapse.type = 'button';
-    collapse.dataset.role = 'collapse-toggle';
-    collapse.className = 'collapse-toggle';
     if (currentOptions.enableH2Collapse && item.level === 'h2' && item.hasChildren && h2Key) {
+      collapse.className = 'collapse-toggle';
       collapse.dataset.h2Id = h2Key;
-      collapse.textContent = collapsedH2Ids.has(h2Key) ? '+' : '−';
+      collapse.textContent = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? '−' : '+';
+      collapse.title = expandedH2Ids.has(h2Key) || currentOptions.showSubHeadings ? '折りたたむ' : '展開する';
       collapse.addEventListener('click', (event) => {
         event.stopPropagation();
-        toggleCollapse(h2Key);
+        toggleExpansion(h2Key);
       });
     } else {
       collapse.className = 'collapse-placeholder';
@@ -290,7 +313,6 @@ function renderToc(items: SidePanelItem[], nextActiveId: string | null): void {
   tocEl.appendChild(fragment);
   tocEl.hidden = false;
   statusEl.hidden = true;
-  applyCollapseVisibility();
   updateActiveHeading(nextActiveId);
 }
 
@@ -335,10 +357,11 @@ async function requestState(): Promise<void> {
       return;
     }
 
-    rawItems = state.items;
-    const visibleItems = filterByOptions(rawItems);
+    const baseItems = state.items ?? [];
+    const visibleItems = visibleContentItems(baseItems);
     setMeta(state.title, state.url, visibleItems.length);
-    renderToc(rawItems, state.activeId);
+    renderToc(baseItems, state.activeId);
+    if (state.generatedFromHeadings) setStatus(msg('generatedFromHeadings'), 'ok');
   } catch (error) {
     setMeta(tab.title ?? 'Error', tab.url ?? '', 0);
     const message = normalizeError(error).includes('Cannot access a chrome:// URL') ? msg('unsupportedPage') : `${msg('failedToLoad')}: ${normalizeError(error)}`;
@@ -366,7 +389,7 @@ function formatSelectedMarkdown(items: SidePanelItem[]): string {
   return items.map((item) => {
     if (item.level === 'top') return `- [${item.text}](#top)`;
     if (item.level === 'bottom') return `- [${item.text}](#bottom)`;
-    const depth = currentOptions.showSubHeadings ? Math.max(0, Number(item.level.slice(1)) - 2) : 0;
+    const depth = currentOptions.showSubHeadings || item.parentH2Id ? Math.max(0, Number(String(item.level).slice(1)) - 2) : 0;
     const indent = '  '.repeat(depth);
     if (currentOptions.includeLinks && item.id) return `${indent}- [${item.text}](#${encodeURIComponent(item.id)})`;
     return `${indent}- ${item.text}`;
@@ -380,7 +403,7 @@ async function copySelected(): Promise<void> {
     return;
   }
   await navigator.clipboard.writeText(formatSelectedMarkdown(items));
-  setStatus(msg('copiedSelected'));
+  setStatus(`${msg('copiedSelected')} ${msg('copyNextAction')}`, 'ok');
 }
 
 function setAllSelection(checked: boolean): void {
@@ -397,6 +420,8 @@ openModalButton.addEventListener('click', () => void openLegacyModal());
 copySelectedButton.addEventListener('click', () => void copySelected());
 selectAllButton.addEventListener('click', () => setAllSelection(true));
 clearSelectionButton.addEventListener('click', () => setAllSelection(false));
+expandAllButton.addEventListener('click', () => expandAll());
+collapseAllButton.addEventListener('click', () => collapseAll());
 chrome.tabs.onActivated.addListener(() => void requestState());
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => { if (tabId === currentTabId && changeInfo.status === 'complete') void requestState(); });
 chrome.runtime.onMessage.addListener((message) => {

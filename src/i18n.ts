@@ -11,8 +11,8 @@ const messages = {
     legacyModal: '従来モーダル',
     unsupportedPage: 'note.com または editor.note.com の記事・編集画面を開くと、ここにTOCが表示されます。',
     noActiveTab: 'アクティブタブが見つかりません。',
-    noTocItems: 'TOC項目がありません。本文内の見出しも検出できませんでした。',
-    failedToLoad: '読み込みに失敗しました',
+    noTocItems: 'TOCを生成できませんでした。本文内に利用可能な見出しが見つかりません。',
+    failedToLoad: 'TOCの読み込みに失敗しました',
     failedToJump: 'ジャンプに失敗しました',
     failedToOpenLegacy: '従来モーダルの起動に失敗しました',
     copySelected: '選択項目をコピー',
@@ -25,7 +25,9 @@ const messages = {
     missingJumpId: 'ジャンプID未検出',
     headings: 'headings',
     generatedFromHeadings: '本文の見出しからTOCを生成しました。',
-    copyNextAction: '必要な場所で Ctrl+V を押して貼り付けてください。'
+    copyNextAction: '必要な場所で Ctrl+V を押して貼り付けてください。',
+    expandAll: 'すべて展開',
+    collapseAll: 'すべて折りたたみ'
   },
   en: {
     panelTitle: 'note TOC Panel',
@@ -49,7 +51,9 @@ const messages = {
     missingJumpId: 'No jump ID detected',
     headings: 'headings',
     generatedFromHeadings: 'Generated a TOC from document headings.',
-    copyNextAction: 'Press Ctrl+V where you want to paste it.'
+    copyNextAction: 'Press Ctrl+V where you want to paste it.',
+    expandAll: 'Expand all',
+    collapseAll: 'Collapse all'
   }
 } as const;
 

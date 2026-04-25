@@ -43,8 +43,8 @@
       legacyModal: "\u5F93\u6765\u30E2\u30FC\u30C0\u30EB",
       unsupportedPage: "note.com \u307E\u305F\u306F editor.note.com \u306E\u8A18\u4E8B\u30FB\u7DE8\u96C6\u753B\u9762\u3092\u958B\u304F\u3068\u3001\u3053\u3053\u306BTOC\u304C\u8868\u793A\u3055\u308C\u307E\u3059\u3002",
       noActiveTab: "\u30A2\u30AF\u30C6\u30A3\u30D6\u30BF\u30D6\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
-      noTocItems: "TOC\u9805\u76EE\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u672C\u6587\u5185\u306E\u898B\u51FA\u3057\u3082\u691C\u51FA\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
-      failedToLoad: "\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
+      noTocItems: "TOC\u3092\u751F\u6210\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u672C\u6587\u5185\u306B\u5229\u7528\u53EF\u80FD\u306A\u898B\u51FA\u3057\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
+      failedToLoad: "TOC\u306E\u8AAD\u307F\u8FBC\u307F\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       failedToJump: "\u30B8\u30E3\u30F3\u30D7\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       failedToOpenLegacy: "\u5F93\u6765\u30E2\u30FC\u30C0\u30EB\u306E\u8D77\u52D5\u306B\u5931\u6557\u3057\u307E\u3057\u305F",
       copySelected: "\u9078\u629E\u9805\u76EE\u3092\u30B3\u30D4\u30FC",
@@ -57,7 +57,9 @@
       missingJumpId: "\u30B8\u30E3\u30F3\u30D7ID\u672A\u691C\u51FA",
       headings: "headings",
       generatedFromHeadings: "\u672C\u6587\u306E\u898B\u51FA\u3057\u304B\u3089TOC\u3092\u751F\u6210\u3057\u307E\u3057\u305F\u3002",
-      copyNextAction: "\u5FC5\u8981\u306A\u5834\u6240\u3067 Ctrl+V \u3092\u62BC\u3057\u3066\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044\u3002"
+      copyNextAction: "\u5FC5\u8981\u306A\u5834\u6240\u3067 Ctrl+V \u3092\u62BC\u3057\u3066\u8CBC\u308A\u4ED8\u3051\u3066\u304F\u3060\u3055\u3044\u3002",
+      expandAll: "\u3059\u3079\u3066\u5C55\u958B",
+      collapseAll: "\u3059\u3079\u3066\u6298\u308A\u305F\u305F\u307F"
     },
     en: {
       panelTitle: "note TOC Panel",
@@ -81,7 +83,9 @@
       missingJumpId: "No jump ID detected",
       headings: "headings",
       generatedFromHeadings: "Generated a TOC from document headings.",
-      copyNextAction: "Press Ctrl+V where you want to paste it."
+      copyNextAction: "Press Ctrl+V where you want to paste it.",
+      expandAll: "Expand all",
+      collapseAll: "Collapse all"
     }
   };
   function resolveLanguage(language, browserLanguage = navigator.language) {
@@ -137,6 +141,8 @@
   var copySelectedButton = document.getElementById("copySelected");
   var selectAllButton = document.getElementById("selectAll");
   var clearSelectionButton = document.getElementById("clearSelection");
+  var expandAllButton = document.getElementById("expandAll");
+  var collapseAllButton = document.getElementById("collapseAll");
   var titleEl = document.getElementById("panelTitle");
   var currentTabId = null;
   var currentItems = [];
@@ -176,6 +182,8 @@
     copySelectedButton.textContent = msg("copySelected");
     selectAllButton.textContent = msg("selectAll");
     clearSelectionButton.textContent = msg("clearSelection");
+    expandAllButton.textContent = msg("expandAll");
+    collapseAllButton.textContent = msg("collapseAll");
   }
   function setStatus(message, variant = "normal") {
     statusEl.className = variant === "warn" ? "status warn" : variant === "loading" ? "status loading" : variant === "ok" ? "status ok" : "status";
@@ -261,6 +269,19 @@ ${count} ${msg("headings")}`;
     expandedH2Ids = new Set(
       h2Items.filter(() => currentOptions.showSubHeadings && !currentOptions.collapseH2ByDefault).map((item) => item.id ?? `h2-index-${item.index}`)
     );
+  }
+  function getExpandableH2Ids() {
+    return annotateHierarchy(rawItems).filter((item) => item.level === "h2" && item.hasChildren).map((item) => item.id ?? `h2-index-${item.index}`);
+  }
+  function expandAll() {
+    manuallyChangedExpansion = true;
+    expandedH2Ids = new Set(getExpandableH2Ids());
+    renderToc(rawItems, null, true);
+  }
+  function collapseAll() {
+    manuallyChangedExpansion = true;
+    expandedH2Ids = /* @__PURE__ */ new Set();
+    renderToc(rawItems, null, true);
   }
   function toggleExpansion(h2Id) {
     manuallyChangedExpansion = true;
@@ -446,6 +467,8 @@ ${count} ${msg("headings")}`;
   copySelectedButton.addEventListener("click", () => void copySelected());
   selectAllButton.addEventListener("click", () => setAllSelection(true));
   clearSelectionButton.addEventListener("click", () => setAllSelection(false));
+  expandAllButton.addEventListener("click", () => expandAll());
+  collapseAllButton.addEventListener("click", () => collapseAll());
   chrome.tabs.onActivated.addListener(() => void requestState());
   chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (tabId === currentTabId && changeInfo.status === "complete") void requestState();
