@@ -73,6 +73,15 @@ export function mergeOptions(raw: Partial<ExportOptions> = {}): ExportOptions {
     collapseH2ByDefault: typeof raw.collapseH2ByDefault === 'boolean'
       ? raw.collapseH2ByDefault
       : DEFAULT_OPTIONS.collapseH2ByDefault,
+    backgroundImageMode: raw.backgroundImageMode === 'default' || raw.backgroundImageMode === 'none' || raw.backgroundImageMode === 'custom'
+      ? raw.backgroundImageMode
+      : DEFAULT_OPTIONS.backgroundImageMode,
+    backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === 'string'
+      ? raw.backgroundImageDataUrl
+      : DEFAULT_OPTIONS.backgroundImageDataUrl,
+    backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity)
+      ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity)))
+      : DEFAULT_OPTIONS.backgroundOverlayOpacity,
     headingColors
   };
 }

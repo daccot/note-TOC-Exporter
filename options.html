@@ -5,9 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>note TOC Exporter Settings</title>
     <style>
-      :root { color-scheme: light; --bg:#f4efe6; --panel:#fffdf8; --ink:#172033; --muted:#5f6b7a; --line:#d7d3c7; --accent:#d65a31; --accent-2:#ffc857; }
+      :root { --app-wallpaper: none; --app-wallpaper-opacity: 0.58; color-scheme: light; --bg:#f4efe6; --panel:#fffdf8; --ink:#172033; --muted:#5f6b7a; --line:#d7d3c7; --accent:#d65a31; --accent-2:#ffc857; }
       * { box-sizing: border-box; }
-      body { margin:0; padding:32px 20px 48px; background:linear-gradient(180deg,#f7f1e8 0%,var(--bg) 100%); color:var(--ink); font:400 16px/1.6 "Segoe UI","Hiragino Sans",sans-serif; }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: var(--app-wallpaper);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: var(--app-wallpaper-opacity);
+        pointer-events: none;
+        z-index: -1;
+      }
+      body { position: relative; margin:0; padding:32px 20px 48px; background:linear-gradient(180deg,#f7f1e8 0%,var(--bg) 100%); color:var(--ink); font:400 16px/1.6 "Segoe UI","Hiragino Sans",sans-serif; }
       main { width:min(1120px,100%); margin:0 auto; display:grid; gap:18px; }
       .hero,.panel { background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:0 16px 40px rgba(23,32,51,.08); }
       .hero { padding:28px; display:grid; gap:10px; }
@@ -59,6 +71,23 @@
               <div class="field"><label for="minHeadingLevel">最小見出し</label><select id="minHeadingLevel" name="minHeadingLevel"></select></div>
               <div class="field"><label for="indentStyle">インデント</label><select id="indentStyle" name="indentStyle"><option value="spaces">半角スペース</option><option value="fullWidth">全角スペース</option></select></div>
               <div class="field"><label for="spacesPerLevel">段ごとの空白数</label><input id="spacesPerLevel" name="spacesPerLevel" type="number" min="1" max="8"></div>
+                            <div class="field">
+                <label for="backgroundImageMode">壁紙</label>
+                <select id="backgroundImageMode" name="backgroundImageMode">
+                  <option value="default">既定画像を使用</option>
+                  <option value="none">使用しない</option>
+                  <option value="custom">カスタム画像を使用</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="backgroundOverlayOpacity">壁紙の濃度</label>
+                <input id="backgroundOverlayOpacity" name="backgroundOverlayOpacity" type="number" min="0" max="0.92" step="0.05">
+              </div>
+              <div class="field full">
+                <label for="wallpaperFile">カスタム壁紙画像</label>
+                <input id="wallpaperFile" type="file" accept="image/*">
+                <input id="backgroundImageDataUrl" type="hidden">
+              </div>
               <div class="field"><label for="uiLanguage">表示言語</label><select id="uiLanguage" name="uiLanguage"><option value="auto">ブラウザ設定に合わせる</option><option value="ja">日本語（ビジネス表現）</option><option value="en">English</option></select></div>
                             <div class="field">
                 <label for="showSubHeadings">サブ見出し表示</label>

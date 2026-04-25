@@ -5,9 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>note TOC Panel</title>
     <style>
-      :root { color-scheme: light; --bg:#f6f8fb; --panel:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --accent-bg:#eff6ff; --warn-bg:#fff7ed; --warn-line:#fed7aa; --warn-text:#9a3412; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      :root { --app-wallpaper: none; --app-wallpaper-opacity: 0.58; color-scheme: light; --bg:#f6f8fb; --panel:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --accent-bg:#eff6ff; --warn-bg:#fff7ed; --warn-line:#fed7aa; --warn-text:#9a3412; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
       * { box-sizing: border-box; }
-      body { margin:0; background:var(--bg); color:var(--text); font-size:13px; }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: var(--app-wallpaper);
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: var(--app-wallpaper-opacity);
+        pointer-events: none;
+        z-index: -1;
+      }
+      body { position: relative; margin:0; background:var(--bg); color:var(--text); font-size:13px; }
       header { position:sticky; top:0; z-index:3; background:rgba(246,248,251,.96); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:12px; }
       h1 { margin:0 0 8px; font-size:15px; line-height:1.35; }
       .meta { color:var(--muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; white-space:pre-line; }

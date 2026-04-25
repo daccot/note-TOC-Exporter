@@ -3,6 +3,7 @@ export type HeadingLevel = 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 export type TocSource = 'editor' | 'published';
 export type ExportFormat = 'markdown' | 'html' | 'plain';
 export type UiLanguage = 'auto' | 'ja' | 'en';
+export type BackgroundImageMode = 'default' | 'none' | 'custom';
 
 export interface TocItem {
   index: number;
@@ -53,6 +54,9 @@ export interface ExportOptions {
   showSubHeadings: boolean;
   enableH2Collapse: boolean;
   collapseH2ByDefault: boolean;
+  backgroundImageMode: BackgroundImageMode;
+  backgroundImageDataUrl: string;
+  backgroundOverlayOpacity: number;
   headingColors: Record<HeadingLevel, string>;
 }
 

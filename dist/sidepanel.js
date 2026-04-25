@@ -21,6 +21,9 @@
     showSubHeadings: false,
     enableH2Collapse: true,
     collapseH2ByDefault: false,
+    backgroundImageMode: "default",
+    backgroundImageDataUrl: "",
+    backgroundOverlayOpacity: 0.58,
     headingColors: {
       h2: "#eff6ff",
       h3: "#f0fdf4",
@@ -108,6 +111,9 @@
       showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
       enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
       collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
+      backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
+      backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
+      backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
       headingColors
     };
   }
@@ -140,11 +146,26 @@
   function msg(key) {
     return t(currentOptions.uiLanguage, key);
   }
+  function applyWallpaperTheme() {
+    const root = document.documentElement;
+    const opacity = Math.min(0.92, Math.max(0, Number(currentOptions.backgroundOverlayOpacity)));
+    root.style.setProperty("--app-wallpaper-opacity", String(opacity));
+    if (currentOptions.backgroundImageMode === "none") {
+      root.style.setProperty("--app-wallpaper", "none");
+      return;
+    }
+    if (currentOptions.backgroundImageMode === "custom" && currentOptions.backgroundImageDataUrl) {
+      root.style.setProperty("--app-wallpaper", `url("${currentOptions.backgroundImageDataUrl}")`);
+      return;
+    }
+    root.style.setProperty("--app-wallpaper", `url("${chrome.runtime.getURL("assets/default-wallpaper.jpg")}")`);
+  }
   function normalizeError(error) {
     return error instanceof Error ? error.message : String(error);
   }
   async function refreshOptions() {
     currentOptions = mergeOptions(await loadOptions().catch(() => DEFAULT_OPTIONS));
+    applyWallpaperTheme();
     titleEl.textContent = msg("panelTitle");
     refreshButton.textContent = msg("reload");
     openModalButton.textContent = msg("legacyModal");

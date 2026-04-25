@@ -54,12 +54,31 @@ function msg(key: Parameters<typeof t>[1]): string {
   return t(currentOptions.uiLanguage, key);
 }
 
+
+function applyWallpaperTheme(): void {
+  const root = document.documentElement;
+  const opacity = Math.min(0.92, Math.max(0, Number(currentOptions.backgroundOverlayOpacity)));
+  root.style.setProperty('--app-wallpaper-opacity', String(opacity));
+
+  if (currentOptions.backgroundImageMode === 'none') {
+    root.style.setProperty('--app-wallpaper', 'none');
+    return;
+  }
+
+  if (currentOptions.backgroundImageMode === 'custom' && currentOptions.backgroundImageDataUrl) {
+    root.style.setProperty('--app-wallpaper', `url("${currentOptions.backgroundImageDataUrl}")`);
+    return;
+  }
+
+  root.style.setProperty('--app-wallpaper', `url("${chrome.runtime.getURL('assets/default-wallpaper.jpg')}")`);
+}
 function normalizeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 async function refreshOptions(): Promise<void> {
   currentOptions = mergeOptions(await loadOptions().catch(() => DEFAULT_OPTIONS));
+  applyWallpaperTheme();
   titleEl.textContent = msg('panelTitle');
   refreshButton.textContent = msg('reload');
   openModalButton.textContent = msg('legacyModal');

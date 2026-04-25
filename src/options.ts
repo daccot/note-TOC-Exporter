@@ -38,6 +38,37 @@ function fillSelectOptions(): void {
   });
 }
 
+
+function getDefaultWallpaperUrl(): string {
+  return chrome.runtime.getURL('assets/default-wallpaper.jpg');
+}
+
+function applyWallpaperTheme(options: ExportOptions): void {
+  const root = document.documentElement;
+  const opacity = Math.min(0.92, Math.max(0, Number(options.backgroundOverlayOpacity)));
+  root.style.setProperty('--app-wallpaper-opacity', String(opacity));
+
+  if (options.backgroundImageMode === 'none') {
+    root.style.setProperty('--app-wallpaper', 'none');
+    return;
+  }
+
+  if (options.backgroundImageMode === 'custom' && options.backgroundImageDataUrl) {
+    root.style.setProperty('--app-wallpaper', `url("${options.backgroundImageDataUrl}")`);
+    return;
+  }
+
+  root.style.setProperty('--app-wallpaper', `url("${getDefaultWallpaperUrl()}")`);
+}
+
+async function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read file.'));
+    reader.readAsDataURL(file);
+  });
+}
 function readForm(): ExportOptions {
   return mergeOptions({
     exportFormat: byId<HTMLSelectElement>('exportFormat').value as ExportFormat,
@@ -53,6 +84,9 @@ function readForm(): ExportOptions {
     autoRun: byId<HTMLInputElement>('autoRun').checked,
     exclusionRules: byId<HTMLTextAreaElement>('exclusionRules').value.split(/\r?\n/),
     template: byId<HTMLTextAreaElement>('template').value,
+    backgroundImageMode: byId<HTMLSelectElement>('backgroundImageMode').value as ExportOptions['backgroundImageMode'],
+    backgroundImageDataUrl: byId<HTMLInputElement>('backgroundImageDataUrl').value,
+    backgroundOverlayOpacity: Number(byId<HTMLInputElement>('backgroundOverlayOpacity').value),
     uiLanguage: byId<HTMLSelectElement>('uiLanguage').value as ExportOptions['uiLanguage'],
     showTopBottomItems: byId<HTMLSelectElement>('showTopBottomItems').value === 'true',
     showSubHeadings: byId<HTMLSelectElement>('showSubHeadings').value === 'true',
@@ -82,6 +116,9 @@ function writeForm(options: ExportOptions): void {
   byId<HTMLInputElement>('autoRun').checked = options.autoRun;
   byId<HTMLTextAreaElement>('exclusionRules').value = options.exclusionRules.join('\n');
   byId<HTMLTextAreaElement>('template').value = options.template;
+  byId<HTMLSelectElement>('backgroundImageMode').value = options.backgroundImageMode;
+  byId<HTMLInputElement>('backgroundImageDataUrl').value = options.backgroundImageDataUrl;
+  byId<HTMLInputElement>('backgroundOverlayOpacity').value = String(options.backgroundOverlayOpacity);
   byId<HTMLSelectElement>('uiLanguage').value = options.uiLanguage;
   byId<HTMLSelectElement>('showTopBottomItems').value = String(options.showTopBottomItems);
   byId<HTMLSelectElement>('showSubHeadings').value = String(options.showSubHeadings);
@@ -92,6 +129,7 @@ function writeForm(options: ExportOptions): void {
   byId<HTMLInputElement>('headingColorH4').value = options.headingColors.h4;
   byId<HTMLInputElement>('headingColorH5').value = options.headingColors.h5;
   byId<HTMLInputElement>('headingColorH6').value = options.headingColors.h6;
+  applyWallpaperTheme(options);
 }
 
 async function renderProfiles(): Promise<void> {
@@ -177,10 +215,25 @@ async function initialize(): Promise<void> {
   await renderProfiles();
   await renderHistory();
 
+
+  byId<HTMLInputElement>('wallpaperFile').addEventListener('change', async (event) => {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const dataUrl = await readFileAsDataUrl(file);
+    byId<HTMLInputElement>('backgroundImageDataUrl').value = dataUrl;
+    byId<HTMLSelectElement>('backgroundImageMode').value = 'custom';
+    const options = readForm();
+    await saveOptions(options);
+    applyWallpaperTheme(options);
+    setStatus('カスタム壁紙を保存しました。');
+  });
   byId<HTMLFormElement>('options-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const options = readForm();
     await saveOptions(options);
+    applyWallpaperTheme(options);
     setStatus('設定を保存しました。');
   });
 

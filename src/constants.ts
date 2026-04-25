@@ -28,6 +28,9 @@ export const DEFAULT_OPTIONS: ExportOptions = {
   showSubHeadings: false,
   enableH2Collapse: true,
   collapseH2ByDefault: false,
+  backgroundImageMode: 'default',
+  backgroundImageDataUrl: '',
+  backgroundOverlayOpacity: 0.58,
   headingColors: {
     h2: '#eff6ff',
     h3: '#f0fdf4',

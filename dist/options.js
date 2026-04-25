@@ -23,6 +23,9 @@
     showSubHeadings: false,
     enableH2Collapse: true,
     collapseH2ByDefault: false,
+    backgroundImageMode: "default",
+    backgroundImageDataUrl: "",
+    backgroundOverlayOpacity: 0.58,
     headingColors: {
       h2: "#eff6ff",
       h3: "#f0fdf4",
@@ -55,6 +58,9 @@
       showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
       enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
       collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
+      backgroundImageMode: raw.backgroundImageMode === "default" || raw.backgroundImageMode === "none" || raw.backgroundImageMode === "custom" ? raw.backgroundImageMode : DEFAULT_OPTIONS.backgroundImageMode,
+      backgroundImageDataUrl: typeof raw.backgroundImageDataUrl === "string" ? raw.backgroundImageDataUrl : DEFAULT_OPTIONS.backgroundImageDataUrl,
+      backgroundOverlayOpacity: Number.isFinite(raw.backgroundOverlayOpacity) ? Math.min(0.92, Math.max(0, Number(raw.backgroundOverlayOpacity))) : DEFAULT_OPTIONS.backgroundOverlayOpacity,
       headingColors
     };
   }
@@ -158,6 +164,31 @@
       minHeadingLevel.appendChild(option);
     });
   }
+  function getDefaultWallpaperUrl() {
+    return chrome.runtime.getURL("assets/default-wallpaper.jpg");
+  }
+  function applyWallpaperTheme(options) {
+    const root = document.documentElement;
+    const opacity = Math.min(0.92, Math.max(0, Number(options.backgroundOverlayOpacity)));
+    root.style.setProperty("--app-wallpaper-opacity", String(opacity));
+    if (options.backgroundImageMode === "none") {
+      root.style.setProperty("--app-wallpaper", "none");
+      return;
+    }
+    if (options.backgroundImageMode === "custom" && options.backgroundImageDataUrl) {
+      root.style.setProperty("--app-wallpaper", `url("${options.backgroundImageDataUrl}")`);
+      return;
+    }
+    root.style.setProperty("--app-wallpaper", `url("${getDefaultWallpaperUrl()}")`);
+  }
+  async function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+      reader.readAsDataURL(file);
+    });
+  }
   function readForm() {
     return mergeOptions({
       exportFormat: byId("exportFormat").value,
@@ -173,6 +204,9 @@
       autoRun: byId("autoRun").checked,
       exclusionRules: byId("exclusionRules").value.split(/\r?\n/),
       template: byId("template").value,
+      backgroundImageMode: byId("backgroundImageMode").value,
+      backgroundImageDataUrl: byId("backgroundImageDataUrl").value,
+      backgroundOverlayOpacity: Number(byId("backgroundOverlayOpacity").value),
       uiLanguage: byId("uiLanguage").value,
       showTopBottomItems: byId("showTopBottomItems").value === "true",
       showSubHeadings: byId("showSubHeadings").value === "true",
@@ -201,6 +235,9 @@
     byId("autoRun").checked = options.autoRun;
     byId("exclusionRules").value = options.exclusionRules.join("\n");
     byId("template").value = options.template;
+    byId("backgroundImageMode").value = options.backgroundImageMode;
+    byId("backgroundImageDataUrl").value = options.backgroundImageDataUrl;
+    byId("backgroundOverlayOpacity").value = String(options.backgroundOverlayOpacity);
     byId("uiLanguage").value = options.uiLanguage;
     byId("showTopBottomItems").value = String(options.showTopBottomItems);
     byId("showSubHeadings").value = String(options.showSubHeadings);
@@ -211,6 +248,7 @@
     byId("headingColorH4").value = options.headingColors.h4;
     byId("headingColorH5").value = options.headingColors.h5;
     byId("headingColorH6").value = options.headingColors.h6;
+    applyWallpaperTheme(options);
   }
   async function renderProfiles() {
     const profiles = await loadProfiles();
@@ -287,10 +325,23 @@
     writeForm(await loadOptions().catch(() => DEFAULT_OPTIONS));
     await renderProfiles();
     await renderHistory();
+    byId("wallpaperFile").addEventListener("change", async (event) => {
+      const input = event.currentTarget;
+      const file = input.files?.[0];
+      if (!file) return;
+      const dataUrl = await readFileAsDataUrl(file);
+      byId("backgroundImageDataUrl").value = dataUrl;
+      byId("backgroundImageMode").value = "custom";
+      const options = readForm();
+      await saveOptions(options);
+      applyWallpaperTheme(options);
+      setStatus("\u30AB\u30B9\u30BF\u30E0\u58C1\u7D19\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002");
+    });
     byId("options-form").addEventListener("submit", async (event) => {
       event.preventDefault();
       const options = readForm();
       await saveOptions(options);
+      applyWallpaperTheme(options);
       setStatus("\u8A2D\u5B9A\u3092\u4FDD\u5B58\u3057\u307E\u3057\u305F\u3002");
     });
     byId("reset-button").addEventListener("click", async () => {
