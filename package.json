@@ -1,0 +1,22 @@
+{
+  "name": "note-toc-extension",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Chrome extension that exports note.com table of contents as Markdown links.",
+  "scripts": {
+    "build": "npm run clean && npm exec esbuild -- src/background.ts src/content.ts src/options.ts src/popup.ts --bundle --format=iife --target=chrome120 --outdir=dist",
+    "clean": "powershell -NoProfile -Command \"if (Test-Path dist) { Remove-Item -Recurse -Force dist }\"",
+    "e2e": "playwright test",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.38",
+    "@types/node": "^25.5.0",
+    "@playwright/test": "^1.54.2",
+    "esbuild": "^0.27.4",
+    "jsdom": "^29.0.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
+  }
+}

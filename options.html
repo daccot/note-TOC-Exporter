@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>note TOC Exporter Settings</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4efe6;
+        --panel: #fffdf8;
+        --ink: #172033;
+        --muted: #5f6b7a;
+        --line: #d7d3c7;
+        --accent: #d65a31;
+        --accent-2: #ffc857;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px 20px 48px;
+        background:
+          radial-gradient(circle at top left, rgba(255, 200, 87, 0.35), transparent 28%),
+          linear-gradient(180deg, #f7f1e8 0%, var(--bg) 100%);
+        color: var(--ink);
+        font: 400 16px/1.6 "Segoe UI", "Hiragino Sans", sans-serif;
+      }
+      main {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 18px;
+      }
+      .hero, .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        box-shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
+      }
+      .hero {
+        padding: 28px;
+        display: grid;
+        gap: 10px;
+      }
+      .eyebrow {
+        font: 700 12px/1.2 "Segoe UI", sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        margin: 0;
+        font: 800 36px/1.05 Georgia, "Times New Roman", serif;
+      }
+      .sub {
+        margin: 0;
+        color: var(--muted);
+        max-width: 72ch;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+        gap: 18px;
+      }
+      .panel {
+        padding: 22px;
+      }
+      .panel h2 {
+        margin: 0 0 14px;
+        font: 800 20px/1.2 Georgia, serif;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field.full {
+        grid-column: 1 / -1;
+      }
+      label {
+        font-weight: 700;
+        font-size: 13px;
+      }
+      input[type="number"], select, textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        color: var(--ink);
+        padding: 10px 12px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+      .checks {
+        display: grid;
+        gap: 8px;
+        padding-top: 6px;
+      }
+      .checks label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+      .list {
+        display: grid;
+        gap: 8px;
+      }
+      .list-row {
+        display: grid;
+        gap: 6px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .tiny-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .history-meta {
+        display: flex;
+        align-items: start;
+        gap: 10px;
+      }
+      .tiny-actions button {
+        padding: 9px 12px;
+      }
+      button {
+        border: 1px solid transparent;
+        border-radius: 999px;
+        padding: 11px 16px;
+        cursor: pointer;
+        font: 800 13px/1 "Segoe UI", sans-serif;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .secondary {
+        background: #fff;
+        border-color: var(--line);
+        color: var(--ink);
+      }
+      .status {
+        min-height: 22px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .aside-list {
+        display: grid;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        background: rgba(255, 200, 87, 0.24);
+        color: #7a4711;
+        font: 700 12px/1 "Segoe UI", sans-serif;
+      }
+      @media (max-width: 880px) {
+        .layout { grid-template-columns: 1fr; }
+        .grid { grid-template-columns: 1fr; }
+        body { padding-inline: 14px; }
+        h1 { font-size: 30px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Options</div>
+        <h1>note TOC Exporter</h1>
+        <p class="sub">普段使う出力形式とか、自動実行とか、除外ルールとかをここで固定できるページやで。モーダルから変えた設定とも同じ `chrome.storage.local` を共有しとる。</p>
+        <div class="chip">Shortcut: Ctrl+Shift+Y</div>
+      </section>
+
+      <div class="layout">
+        <section class="panel">
+          <h2>Default Settings</h2>
+          <form id="options-form">
+            <div class="grid">
+              <div class="field">
+                <label for="exportFormat">出力形式</label>
+                <select id="exportFormat" name="exportFormat"></select>
+              </div>
+
+              <div class="field">
+                <label for="listType">リスト形式</label>
+                <select id="listType" name="listType">
+                  <option value="unordered">箇条書き</option>
+                  <option value="ordered">番号付き</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="minHeadingLevel">最小見出し</label>
+                <select id="minHeadingLevel" name="minHeadingLevel"></select>
+              </div>
+
+              <div class="field">
+                <label for="indentStyle">インデント</label>
+                <select id="indentStyle" name="indentStyle">
+                  <option value="spaces">半角スペース</option>
+                  <option value="fullWidth">全角スペース</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="spacesPerLevel">段ごとの空白数</label>
+                <input id="spacesPerLevel" name="spacesPerLevel" type="number" min="1" max="8">
+              </div>
+
+              <div class="field full">
+                <label for="exclusionRules">除外キーワード</label>
+                <textarea id="exclusionRules" name="exclusionRules" placeholder="1行に1キーワードで入れてな"></textarea>
+              </div>
+
+              <div class="field full">
+                <label for="template">出力テンプレート</label>
+                <textarea id="template" name="template" placeholder="{{title_block}}&#10;{{toc}}"></textarea>
+              </div>
+
+              <div class="field full">
+                <label>追加オプション</label>
+                <div class="checks">
+                  <label><input id="includeLinks" name="includeLinks" type="checkbox"> リンクを含める</label>
+                  <label><input id="includeTitle" name="includeTitle" type="checkbox"> タイトルを含める</label>
+                  <label><input id="includeUrl" name="includeUrl" type="checkbox"> URLを含める</label>
+                  <label><input id="includePublishedAt" name="includePublishedAt" type="checkbox"> 公開日を含める</label>
+                  <label><input id="includeStats" name="includeStats" type="checkbox"> 見出し統計を含める</label>
+                  <label><input id="autoRun" name="autoRun" type="checkbox"> 対応ページで自動実行する</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button class="primary" type="submit">保存する</button>
+              <button class="secondary" id="reset-button" type="button">初期値へ戻す</button>
+            </div>
+            <div class="status" id="status" aria-live="polite"></div>
+          </form>
+        </section>
+
+        <aside class="panel">
+          <h2>Notes</h2>
+          <div class="aside-list">
+            <div>このページで保存した値は、記事上のモーダル起動時にもそのまま使われるで。</div>
+            <div>`HTML` 出力にしても、見出し抽出ロジック自体は同じやさけ、診断ログやプレビュー確認は記事ページ側で見るんが確実や。</div>
+            <div>除外キーワードは部分一致やで。たとえば `まとめ` 入れたら、その文字を含む見出しを全部弾く感じや。</div>
+            <div>自動実行を ON にした時は、対応ページ開いた瞬間にモーダル出るさけ、そこだけ好み分かれるで。</div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="layout">
+        <section class="panel stack">
+          <h2>Profiles</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="profile-name">新規プロファイル名</label>
+              <input id="profile-name" type="text" placeholder="ブログ用 とか">
+            </div>
+            <div class="field">
+              <label for="profile-select">保存済み</label>
+              <select id="profile-select"></select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" id="save-profile-button" type="button">今の設定で保存</button>
+            <button class="secondary" id="apply-profile-button" type="button">既定値へ適用</button>
+            <button class="secondary" id="delete-profile-button" type="button">削除</button>
+          </div>
+          <div class="list" id="profiles"></div>
+        </section>
+
+        <section class="panel stack">
+          <h2>History</h2>
+          <div class="actions">
+            <button class="secondary" id="select-all-history-button" type="button">全選択</button>
+            <button class="secondary" id="clear-history-selection-button" type="button">全解除</button>
+            <button class="secondary" id="delete-all-history-button" type="button">全削除</button>
+            <button class="secondary" id="delete-history-button" type="button">選択削除</button>
+          </div>
+          <div class="list" id="history"></div>
+        </section>
+      </div>
+    </main>
+    <script src="dist/options.js"></script>
+  </body>
+  </html>

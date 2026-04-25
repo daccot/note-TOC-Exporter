@@ -1,0 +1,35 @@
+﻿{
+  "manifest_version": 3,
+  "name": "note TOC Exporter",
+  "version": "2.0.0",
+  "description": "noteの公開記事・編集画面からリンク付きTOCを生成し、コピー用モーダルを表示します",
+  "permissions": [
+    "activeTab",
+    "clipboardWrite",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://note.com/*",
+    "https://editor.note.com/*"
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "action": {
+    "default_title": "note TOC Exporter",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "run-note-toc-exporter": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Run note TOC Exporter on the current tab"
+    }
+  },
+  "icons": {
+    "128": "icon128.png"
+  }
+}
