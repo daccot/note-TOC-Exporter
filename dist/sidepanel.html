@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>note TOC Panel</title>
+    <style>
+      :root { --app-wallpaper:none; --app-wallpaper-opacity:.58; color-scheme: light; --bg:#f6f8fb; --panel:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --accent-bg:#eff6ff; --warn-bg:#fff7ed; --warn-line:#fed7aa; --warn-text:#9a3412; --ok-bg:#ecfdf5; --ok-line:#a7f3d0; --ok-text:#065f46; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body::before { content:""; position:fixed; inset:0; background-image:var(--app-wallpaper); background-size:cover; background-position:center; background-repeat:no-repeat; opacity:var(--app-wallpaper-opacity); pointer-events:none; z-index:-1; }
+      body { position:relative; margin:0; background:var(--bg); color:var(--text); font-size:13px; }
+      header { position:sticky; top:0; z-index:3; background:rgba(246,248,251,.90); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:12px; }
+      h1 { margin:0 0 8px; font-size:15px; line-height:1.35; }
+      .meta { color:var(--muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; white-space:pre-line; }
+      .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+      .actions.three { grid-template-columns:1fr 1fr 1fr; }
+      button { border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--text); cursor:pointer; font-size:12px; padding:8px 10px; }
+      button.primary { border-color:var(--accent); background:var(--accent); color:#fff; }
+      main { padding:10px; }
+      .status { border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.92); color:var(--muted); line-height:1.6; padding:12px; }
+      .status.warn { background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text); }
+      .status.ok { background:var(--ok-bg); border-color:var(--ok-line); color:var(--ok-text); }
+      .status.loading { display:grid; grid-template-columns:42px 1fr; gap:10px; align-items:center; }
+      .loading-spinner { width:36px; height:36px; }
+      .toc { display:flex; flex-direction:column; gap:6px; }
+      .toc-row { display:grid; grid-template-columns:22px 1fr; gap:6px; align-items:start; border:1px solid var(--line); border-radius:12px; padding:6px; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+      .toc-row > input { margin-top:10px; }
+      .toc-row.child-row { margin-left:14px; }
+      .toc-row.hidden-by-collapse { display:none; }
+      .toc-row.active-row { border-color:var(--accent); box-shadow:0 0 0 2px rgba(37,99,235,.18); transform:translateX(2px); }
+      .toc-item { display:grid; grid-template-columns:auto auto 1fr; gap:8px; align-items:start; border:1px solid transparent; border-radius:10px; background:rgba(255,255,255,.78); padding:8px; text-align:left; width:100%; }
+      .toc-item:hover { border-color:var(--line); background:var(--panel); }
+      .toc-item.active { border-color:var(--accent); background:#fff; font-weight:700; }
+      .collapse-toggle { width:28px; min-width:28px; padding:2px 0; border-radius:8px; font-size:12px; line-height:1.2; font-weight:800; }
+      .collapse-placeholder { width:28px; min-width:28px; visibility:hidden; }
+      .level { border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; min-width:34px; padding:2px 6px; text-align:center; }
+      .text { line-height:1.45; overflow-wrap:anywhere; }
+      .h2 { margin-left:0; } .h3 { margin-left:10px; } .h4 { margin-left:20px; } .h5 { margin-left:30px; } .h6 { margin-left:40px; }
+      .small { color:var(--muted); font-size:11px; margin-top:2px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="panelTitle">note TOC Panel</h1>
+      <div id="meta" class="meta">対応ページを確認中...</div>
+      <div class="actions">
+        <button id="refresh" class="primary" type="button">再読込</button>
+        <button id="openModal" type="button">従来モーダル</button>
+      </div>
+      <div class="actions three">
+        <button id="copySelected" type="button">選択項目をコピー</button>
+        <button id="selectAll" type="button">全選択</button>
+        <button id="clearSelection" type="button">全解除</button>
+      </div>
+      <div class="actions">
+        <button id="expandAll" type="button">すべて展開</button>
+        <button id="collapseAll" type="button">すべて折りたたみ</button>
+      </div>
+    </header>
+    <main>
+      <div id="status" class="status">TOCを読み込んでいます。</div>
+      <div id="toc" class="toc" hidden></div>
+    </main>
+    <script src="dist/sidepanel.js"></script>
+  </body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>note TOC Exporter</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #fff8ef;
+        --panel: #fffdf9;
+        --ink: #1b2233;
+        --muted: #667085;
+        --line: #dfd7c9;
+        --accent: #c4492d;
+        --accent-soft: #ffd9b8;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        width: 360px;
+        background:
+          radial-gradient(circle at top right, rgba(255, 217, 184, 0.65), transparent 36%),
+          linear-gradient(180deg, #fffaf3 0%, var(--bg) 100%);
+        color: var(--ink);
+        font: 400 14px/1.5 "Segoe UI", "Hiragino Sans", sans-serif;
+      }
+      main {
+        padding: 18px;
+        display: grid;
+        gap: 14px;
+      }
+      .hero, .panel {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--panel);
+        box-shadow: 0 12px 28px rgba(27, 34, 51, 0.08);
+      }
+      .hero {
+        padding: 16px;
+        display: grid;
+        gap: 8px;
+      }
+      .eyebrow {
+        font: 800 11px/1 "Segoe UI", sans-serif;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        margin: 0;
+        font: 800 24px/1.05 Georgia, serif;
+      }
+      .sub, .status, .meta {
+        color: var(--muted);
+      }
+      .panel {
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .label {
+        font: 800 12px/1 "Segoe UI", sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--accent);
+      }
+      .actions {
+        display: grid;
+        gap: 8px;
+      }
+      button, a.button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 42px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        text-decoration: none;
+        font: 800 13px/1 "Segoe UI", sans-serif;
+      }
+      .primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .secondary {
+        background: #fff;
+        border-color: var(--line);
+        color: var(--ink);
+      }
+      .hint {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: var(--accent-soft);
+        color: #7a3c1c;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Quick Panel</div>
+        <h1>note TOC Exporter</h1>
+        <div class="sub">今のタブで即実行するか、設定ページに飛ぶだけの軽い popup にしとるで。</div>
+      </section>
+
+      <section class="panel">
+        <div class="label">Current Tab</div>
+        <div class="meta" id="tab-state">確認中...</div>
+        <div class="actions">
+          <button class="primary" id="run-button" type="button">このタブで実行</button>
+          <a class="button secondary" id="options-link" href="options.html" target="_blank" rel="noreferrer">Options を開く</a>
+        </div>
+        <div class="status" id="status" aria-live="polite"></div>
+      </section>
+
+      <div class="hint">ショートカットは `Ctrl+Shift+Y` やで。popup 開かんでも走らせたい時に使えるわ。</div>
+    </main>
+    <script src="dist/popup.js"></script>
+  </body>
+  </html>
