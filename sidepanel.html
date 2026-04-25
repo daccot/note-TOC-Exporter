@@ -12,44 +12,43 @@
       h1 { margin:0 0 8px; font-size:15px; line-height:1.35; }
       .meta { color:var(--muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; white-space:pre-line; }
       .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+      .actions.three { grid-template-columns:1fr 1fr 1fr; }
       button { border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--text); cursor:pointer; font-size:12px; padding:8px 10px; }
       button.primary { border-color:var(--accent); background:var(--accent); color:#fff; }
-      button:disabled { cursor:not-allowed; opacity:.5; }
       main { padding:10px; }
-      .status { border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--muted); line-height:1.6; padding:12px; }
-      .status.loading {
-        display: grid;
-        grid-template-columns: 42px 1fr;
-        gap: 10px;
-        align-items: center;
-      }
-
-      .loading-spinner {
-        width: 36px;
-        height: 36px;
-      }
-
-      .loading-text {
-        display: block;
-      }
+      .status { border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--muted); line-height:1.6; padding:12px; }
       .status.warn { background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text); }
-      .toc { display:flex; flex-direction:column; gap:4px; }
-      .toc-item { display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:start; border:1px solid transparent; border-radius:10px; background:transparent; padding:8px; text-align:left; width:100%; }
+      .status.loading { display:grid; grid-template-columns:42px 1fr; gap:10px; align-items:center; }
+      .loading-spinner { width:36px; height:36px; }
+      .toc { display:flex; flex-direction:column; gap:6px; }
+      .toc-row { display:grid; grid-template-columns:22px 1fr; gap:6px; align-items:start; border:1px solid var(--line); border-radius:12px; padding:6px; transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease; }
+      .toc-row > input { margin-top:10px; }
+      .toc-row.child-row { margin-left:14px; }
+      .toc-row.hidden-by-collapse { display:none; }
+      .toc-row.active-row { border-color:var(--accent); box-shadow:0 0 0 2px rgba(37,99,235,.18); transform:translateX(2px); }
+      .toc-item { display:grid; grid-template-columns:auto auto 1fr; gap:8px; align-items:start; border:1px solid transparent; border-radius:10px; background:rgba(255,255,255,.72); padding:8px; text-align:left; width:100%; }
       .toc-item:hover { border-color:var(--line); background:var(--panel); }
-      .toc-item.active { border-color:var(--accent); background:var(--accent-bg); }
-      .level { border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; min-width:28px; padding:2px 6px; text-align:center; }
+      .toc-item.active { border-color:var(--accent); background:#fff; font-weight:700; }
+      .collapse-toggle { width:26px; min-width:26px; padding:2px 0; border-radius:8px; font-size:11px; line-height:1.2; }
+      .collapse-placeholder { width:26px; min-width:26px; }
+      .level { border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; min-width:34px; padding:2px 6px; text-align:center; }
       .text { line-height:1.45; overflow-wrap:anywhere; }
-      .h2 { margin-left:0; } .h3 { margin-left:12px; } .h4 { margin-left:24px; } .h5 { margin-left:36px; } .h6 { margin-left:48px; }
+      .h2 { margin-left:0; } .h3 { margin-left:10px; } .h4 { margin-left:20px; } .h5 { margin-left:30px; } .h6 { margin-left:40px; }
       .small { color:var(--muted); font-size:11px; margin-top:2px; }
     </style>
   </head>
   <body>
     <header>
-      <h1>note TOC Panel</h1>
+      <h1 id="panelTitle">note TOC Panel</h1>
       <div id="meta" class="meta">対応ページを確認中...</div>
       <div class="actions">
         <button id="refresh" class="primary" type="button">再読込</button>
         <button id="openModal" type="button">従来モーダル</button>
+      </div>
+      <div class="actions three">
+        <button id="copySelected" type="button">選択項目をコピー</button>
+        <button id="selectAll" type="button">全選択</button>
+        <button id="clearSelection" type="button">全解除</button>
       </div>
     </header>
     <main>

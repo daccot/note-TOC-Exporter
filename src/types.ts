@@ -2,6 +2,7 @@ export type HeadingLevel = 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
 export type TocSource = 'editor' | 'published';
 export type ExportFormat = 'markdown' | 'html' | 'plain';
+export type UiLanguage = 'auto' | 'ja' | 'en';
 
 export interface TocItem {
   index: number;
@@ -47,6 +48,12 @@ export interface ExportOptions {
   autoRun: boolean;
   exclusionRules: string[];
   template: string;
+  uiLanguage: UiLanguage;
+  showTopBottomItems: boolean;
+  showSubHeadings: boolean;
+  enableH2Collapse: boolean;
+  collapseH2ByDefault: boolean;
+  headingColors: Record<HeadingLevel, string>;
 }
 
 export interface ExportProfile {

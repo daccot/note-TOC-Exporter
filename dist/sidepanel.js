@@ -18,6 +18,9 @@
     template: "{{title_block}}\n{{toc}}",
     uiLanguage: "auto",
     showTopBottomItems: true,
+    showSubHeadings: false,
+    enableH2Collapse: true,
+    collapseH2ByDefault: false,
     headingColors: {
       h2: "#eff6ff",
       h3: "#f0fdf4",
@@ -102,6 +105,9 @@
       template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
       uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
       showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
+      showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
+      enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
+      collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
       headingColors
     };
   }
@@ -124,7 +130,10 @@
   var titleEl = document.getElementById("panelTitle");
   var currentTabId = null;
   var currentItems = [];
+  var rawItems = [];
   var currentOptions = DEFAULT_OPTIONS;
+  var collapsedH2Ids = /* @__PURE__ */ new Set();
+  var userToggledCollapse = false;
   function isSupportedUrl(url) {
     return /^https:\/\/note\.com\//.test(url ?? "") || /^https:\/\/editor\.note\.com\//.test(url ?? "");
   }
@@ -163,6 +172,34 @@
     tocEl.hidden = true;
     tocEl.replaceChildren();
     currentItems = [];
+    rawItems = [];
+  }
+  function annotateHierarchy(items) {
+    let currentH2Id = null;
+    const h2WithChildren = /* @__PURE__ */ new Set();
+    const annotated = items.map((item) => {
+      if (item.level === "h2") {
+        currentH2Id = item.id ?? `h2-index-${item.index}`;
+        return { ...item, parentH2Id: null };
+      }
+      if (item.level !== "top" && item.level !== "bottom" && currentH2Id) {
+        h2WithChildren.add(currentH2Id);
+        return { ...item, parentH2Id: currentH2Id };
+      }
+      return item;
+    });
+    return annotated.map((item) => {
+      if (item.level === "h2") {
+        const h2Key = item.id ?? `h2-index-${item.index}`;
+        return { ...item, hasChildren: h2WithChildren.has(h2Key) };
+      }
+      return item;
+    });
+  }
+  function filterByOptions(items) {
+    const annotated = annotateHierarchy(items);
+    if (currentOptions.showSubHeadings) return annotated;
+    return annotated.filter((item) => item.level === "h2");
   }
   function setMeta(title, url, count) {
     metaEl.textContent = `${title || "Untitled note"}
@@ -170,10 +207,11 @@ ${count} ${msg("headings")}`;
     metaEl.title = url;
   }
   function getRenderableItems(items) {
-    if (!currentOptions.showTopBottomItems) return items;
+    const filtered = filterByOptions(items);
+    if (!currentOptions.showTopBottomItems) return filtered;
     return [
       { index: -1, level: "top", text: msg("topOfPage"), id: "__NOTE_TOC_TOP__", source: "system" },
-      ...items,
+      ...filtered,
       { index: -2, level: "bottom", text: msg("bottomOfPage"), id: "__NOTE_TOC_BOTTOM__", source: "system" }
     ];
   }
@@ -181,7 +219,50 @@ ${count} ${msg("headings")}`;
     if (item.level === "top" || item.level === "bottom") return "#eef2ff";
     return currentOptions.headingColors[item.level] ?? DEFAULT_OPTIONS.headingColors[item.level];
   }
+  function getH2Key(item) {
+    if (item.level !== "h2") return item.parentH2Id ?? null;
+    return item.id ?? `h2-index-${item.index}`;
+  }
+  function initializeCollapse(items) {
+    if (userToggledCollapse || !currentOptions.enableH2Collapse || !currentOptions.collapseH2ByDefault) return;
+    collapsedH2Ids = new Set(
+      items.filter((item) => item.level === "h2" && item.hasChildren).map((item) => item.id ?? `h2-index-${item.index}`)
+    );
+  }
+  function applyCollapseVisibility() {
+    const rows = Array.from(tocEl.querySelectorAll(".toc-row"));
+    for (const row of rows) {
+      const parentH2Id = row.dataset.parentH2Id ?? "";
+      const hidden = Boolean(parentH2Id) && collapsedH2Ids.has(parentH2Id);
+      row.classList.toggle("hidden-by-collapse", hidden);
+    }
+    tocEl.querySelectorAll('[data-role="collapse-toggle"]').forEach((button) => {
+      const h2Id = button.dataset.h2Id ?? "";
+      button.textContent = collapsedH2Ids.has(h2Id) ? "+" : "\u2212";
+      button.title = collapsedH2Ids.has(h2Id) ? "Expand" : "Collapse";
+    });
+  }
+  function toggleCollapse(h2Id) {
+    userToggledCollapse = true;
+    if (collapsedH2Ids.has(h2Id)) collapsedH2Ids.delete(h2Id);
+    else collapsedH2Ids.add(h2Id);
+    applyCollapseVisibility();
+  }
   function updateActiveHeading(nextActiveId) {
+    let activeParentH2Id = null;
+    for (const item of currentItems) {
+      if (item.id === nextActiveId) {
+        activeParentH2Id = getH2Key(item);
+        break;
+      }
+    }
+    for (const row of Array.from(tocEl.querySelectorAll(".toc-row"))) {
+      const rowId = row.dataset.id ?? null;
+      const rowParentH2Id = row.dataset.parentH2Id ?? null;
+      const isActive = rowId === nextActiveId;
+      const isActiveGroup = Boolean(activeParentH2Id && rowParentH2Id === activeParentH2Id);
+      row.classList.toggle("active-row", isActive || isActiveGroup);
+    }
     for (const button of Array.from(tocEl.querySelectorAll(".toc-item"))) {
       const isActive = button.dataset.id === nextActiveId;
       button.classList.toggle("active", isActive);
@@ -191,6 +272,7 @@ ${count} ${msg("headings")}`;
   function renderToc(items, nextActiveId) {
     tocEl.replaceChildren();
     currentItems = getRenderableItems(items);
+    initializeCollapse(currentItems);
     if (currentItems.length === 0) {
       clearToc();
       setStatus(msg("noTocItems"), "warn");
@@ -198,9 +280,13 @@ ${count} ${msg("headings")}`;
     }
     const fragment = document.createDocumentFragment();
     for (const item of currentItems) {
+      const h2Key = getH2Key(item);
       const row = document.createElement("div");
       row.className = `toc-row ${item.level}`;
       row.style.backgroundColor = getItemColor(item);
+      row.dataset.id = item.id ?? "";
+      row.dataset.index = String(item.index);
+      if (item.parentH2Id) row.dataset.parentH2Id = item.parentH2Id;
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = true;
@@ -211,13 +297,30 @@ ${count} ${msg("headings")}`;
       button.className = `toc-item ${item.level}`;
       button.dataset.id = item.id ?? "";
       button.dataset.index = String(item.index);
+      const collapse = document.createElement("button");
+      collapse.type = "button";
+      collapse.dataset.role = "collapse-toggle";
+      collapse.className = "collapse-toggle";
+      if (currentOptions.enableH2Collapse && item.level === "h2" && item.hasChildren && h2Key) {
+        collapse.dataset.h2Id = h2Key;
+        collapse.textContent = collapsedH2Ids.has(h2Key) ? "+" : "\u2212";
+        collapse.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleCollapse(h2Key);
+        });
+      } else {
+        collapse.className = "collapse-placeholder";
+        collapse.textContent = "";
+        collapse.disabled = true;
+        collapse.tabIndex = -1;
+      }
       const level = document.createElement("span");
       level.className = "level";
       level.textContent = item.level === "top" ? "TOP" : item.level === "bottom" ? "END" : item.level.toUpperCase();
       const body = document.createElement("span");
       body.className = "text";
       body.textContent = item.text;
-      button.append(level, body);
+      button.append(collapse, level, body);
       button.addEventListener("click", () => void jumpToItem(item));
       row.append(checkbox, button);
       fragment.appendChild(row);
@@ -225,6 +328,7 @@ ${count} ${msg("headings")}`;
     tocEl.appendChild(fragment);
     tocEl.hidden = false;
     statusEl.hidden = true;
+    applyCollapseVisibility();
     updateActiveHeading(nextActiveId);
   }
   async function getActiveTab() {
@@ -260,8 +364,10 @@ ${count} ${msg("headings")}`;
         setStatus(state?.error ?? msg("failedToLoad"), "warn");
         return;
       }
-      setMeta(state.title, state.url, state.items.length);
-      renderToc(state.items, state.activeId);
+      rawItems = state.items;
+      const visibleItems = filterByOptions(rawItems);
+      setMeta(state.title, state.url, visibleItems.length);
+      renderToc(rawItems, state.activeId);
     } catch (error) {
       setMeta(tab.title ?? "Error", tab.url ?? "", 0);
       const message = normalizeError(error).includes("Cannot access a chrome:// URL") ? msg("unsupportedPage") : `${msg("failedToLoad")}: ${normalizeError(error)}`;
@@ -286,7 +392,7 @@ ${count} ${msg("headings")}`;
     return items.map((item) => {
       if (item.level === "top") return `- [${item.text}](#top)`;
       if (item.level === "bottom") return `- [${item.text}](#bottom)`;
-      const depth = Math.max(0, Number(item.level.slice(1)) - 2);
+      const depth = currentOptions.showSubHeadings ? Math.max(0, Number(item.level.slice(1)) - 2) : 0;
       const indent = "  ".repeat(depth);
       if (currentOptions.includeLinks && item.id) return `${indent}- [${item.text}](#${encodeURIComponent(item.id)})`;
       return `${indent}- ${item.text}`;

@@ -1,5 +1,4 @@
-import { DEFAULT_OPTIONS } from './constants';
-import { DEFAULT_TEMPLATE, HEADING_LEVELS } from './constants';
+import { DEFAULT_OPTIONS, HEADING_LEVELS } from './constants';
 import type { ArticleMeta, ExportHistoryEntry, ExportOptions, HeadingLevel, TocStats } from './types';
 
 export function isEditorPage(url: string): boolean {
@@ -65,6 +64,15 @@ export function mergeOptions(raw: Partial<ExportOptions> = {}): ExportOptions {
     showTopBottomItems: typeof raw.showTopBottomItems === 'boolean'
       ? raw.showTopBottomItems
       : DEFAULT_OPTIONS.showTopBottomItems,
+    showSubHeadings: typeof raw.showSubHeadings === 'boolean'
+      ? raw.showSubHeadings
+      : DEFAULT_OPTIONS.showSubHeadings,
+    enableH2Collapse: typeof raw.enableH2Collapse === 'boolean'
+      ? raw.enableH2Collapse
+      : DEFAULT_OPTIONS.enableH2Collapse,
+    collapseH2ByDefault: typeof raw.collapseH2ByDefault === 'boolean'
+      ? raw.collapseH2ByDefault
+      : DEFAULT_OPTIONS.collapseH2ByDefault,
     headingColors
   };
 }

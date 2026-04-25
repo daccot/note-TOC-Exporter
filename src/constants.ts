@@ -22,7 +22,19 @@ export const DEFAULT_OPTIONS: ExportOptions = {
   includeStats: false,
   autoRun: false,
   exclusionRules: [],
-  template: DEFAULT_TEMPLATE
+  template: '{{title_block}}\n{{toc}}',
+  uiLanguage: 'auto',
+  showTopBottomItems: true,
+  showSubHeadings: false,
+  enableH2Collapse: true,
+  collapseH2ByDefault: false,
+  headingColors: {
+    h2: '#eff6ff',
+    h3: '#f0fdf4',
+    h4: '#fff7ed',
+    h5: '#f5f3ff',
+    h6: '#f8fafc'
+  }
 };
 
 export const HEADING_LEVELS: HeadingLevel[] = ['h2', 'h3', 'h4', 'h5', 'h6'];

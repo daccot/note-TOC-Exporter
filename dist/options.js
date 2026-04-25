@@ -20,6 +20,9 @@
     template: "{{title_block}}\n{{toc}}",
     uiLanguage: "auto",
     showTopBottomItems: true,
+    showSubHeadings: false,
+    enableH2Collapse: true,
+    collapseH2ByDefault: false,
     headingColors: {
       h2: "#eff6ff",
       h3: "#f0fdf4",
@@ -49,6 +52,9 @@
       template: typeof raw.template === "string" ? raw.template : DEFAULT_OPTIONS.template,
       uiLanguage: raw.uiLanguage === "ja" || raw.uiLanguage === "en" || raw.uiLanguage === "auto" ? raw.uiLanguage : DEFAULT_OPTIONS.uiLanguage,
       showTopBottomItems: typeof raw.showTopBottomItems === "boolean" ? raw.showTopBottomItems : DEFAULT_OPTIONS.showTopBottomItems,
+      showSubHeadings: typeof raw.showSubHeadings === "boolean" ? raw.showSubHeadings : DEFAULT_OPTIONS.showSubHeadings,
+      enableH2Collapse: typeof raw.enableH2Collapse === "boolean" ? raw.enableH2Collapse : DEFAULT_OPTIONS.enableH2Collapse,
+      collapseH2ByDefault: typeof raw.collapseH2ByDefault === "boolean" ? raw.collapseH2ByDefault : DEFAULT_OPTIONS.collapseH2ByDefault,
       headingColors
     };
   }
@@ -169,6 +175,9 @@
       template: byId("template").value,
       uiLanguage: byId("uiLanguage").value,
       showTopBottomItems: byId("showTopBottomItems").value === "true",
+      showSubHeadings: byId("showSubHeadings").value === "true",
+      enableH2Collapse: byId("enableH2Collapse").value === "true",
+      collapseH2ByDefault: byId("collapseH2ByDefault").value === "true",
       headingColors: {
         h2: byId("headingColorH2").value,
         h3: byId("headingColorH3").value,
@@ -194,6 +203,9 @@
     byId("template").value = options.template;
     byId("uiLanguage").value = options.uiLanguage;
     byId("showTopBottomItems").value = String(options.showTopBottomItems);
+    byId("showSubHeadings").value = String(options.showSubHeadings);
+    byId("enableH2Collapse").value = String(options.enableH2Collapse);
+    byId("collapseH2ByDefault").value = String(options.collapseH2ByDefault);
     byId("headingColorH2").value = options.headingColors.h2;
     byId("headingColorH3").value = options.headingColors.h3;
     byId("headingColorH4").value = options.headingColors.h4;

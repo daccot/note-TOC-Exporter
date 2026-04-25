@@ -52,7 +52,19 @@ function readForm(): ExportOptions {
     includeStats: byId<HTMLInputElement>('includeStats').checked,
     autoRun: byId<HTMLInputElement>('autoRun').checked,
     exclusionRules: byId<HTMLTextAreaElement>('exclusionRules').value.split(/\r?\n/),
-    template: byId<HTMLTextAreaElement>('template').value
+    template: byId<HTMLTextAreaElement>('template').value,
+    uiLanguage: byId<HTMLSelectElement>('uiLanguage').value as ExportOptions['uiLanguage'],
+    showTopBottomItems: byId<HTMLSelectElement>('showTopBottomItems').value === 'true',
+    showSubHeadings: byId<HTMLSelectElement>('showSubHeadings').value === 'true',
+    enableH2Collapse: byId<HTMLSelectElement>('enableH2Collapse').value === 'true',
+    collapseH2ByDefault: byId<HTMLSelectElement>('collapseH2ByDefault').value === 'true',
+    headingColors: {
+      h2: byId<HTMLInputElement>('headingColorH2').value,
+      h3: byId<HTMLInputElement>('headingColorH3').value,
+      h4: byId<HTMLInputElement>('headingColorH4').value,
+      h5: byId<HTMLInputElement>('headingColorH5').value,
+      h6: byId<HTMLInputElement>('headingColorH6').value
+    }
   });
 }
 
@@ -70,6 +82,16 @@ function writeForm(options: ExportOptions): void {
   byId<HTMLInputElement>('autoRun').checked = options.autoRun;
   byId<HTMLTextAreaElement>('exclusionRules').value = options.exclusionRules.join('\n');
   byId<HTMLTextAreaElement>('template').value = options.template;
+  byId<HTMLSelectElement>('uiLanguage').value = options.uiLanguage;
+  byId<HTMLSelectElement>('showTopBottomItems').value = String(options.showTopBottomItems);
+  byId<HTMLSelectElement>('showSubHeadings').value = String(options.showSubHeadings);
+  byId<HTMLSelectElement>('enableH2Collapse').value = String(options.enableH2Collapse);
+  byId<HTMLSelectElement>('collapseH2ByDefault').value = String(options.collapseH2ByDefault);
+  byId<HTMLInputElement>('headingColorH2').value = options.headingColors.h2;
+  byId<HTMLInputElement>('headingColorH3').value = options.headingColors.h3;
+  byId<HTMLInputElement>('headingColorH4').value = options.headingColors.h4;
+  byId<HTMLInputElement>('headingColorH5').value = options.headingColors.h5;
+  byId<HTMLInputElement>('headingColorH6').value = options.headingColors.h6;
 }
 
 async function renderProfiles(): Promise<void> {
@@ -77,7 +99,7 @@ async function renderProfiles(): Promise<void> {
   const list = byId<HTMLDivElement>('profiles');
   const applySelect = byId<HTMLSelectElement>('profile-select');
   list.innerHTML = '';
-  applySelect.innerHTML = '<option value="">選んでな</option>';
+  applySelect.innerHTML = '<option value="">選択してください</option>';
 
   profiles.forEach((profile) => {
     const option = document.createElement('option');
@@ -115,7 +137,7 @@ async function renderHistory(): Promise<void> {
     copyButton.textContent = '再コピー';
     copyButton.addEventListener('click', async () => {
       await navigator.clipboard.writeText(entry.output);
-      setStatus(`履歴から ${entry.title} をコピーしたで。`);
+      setStatus(`履歴から ${entry.title} をコピーしました。`);
     });
     const downloadButton = document.createElement('button');
     downloadButton.type = 'button';
@@ -159,20 +181,20 @@ async function initialize(): Promise<void> {
     event.preventDefault();
     const options = readForm();
     await saveOptions(options);
-    setStatus('既定値を保存したで。');
+    setStatus('設定を保存しました。');
   });
 
   byId<HTMLButtonElement>('reset-button').addEventListener('click', async () => {
     const options = mergeOptions(DEFAULT_OPTIONS);
     writeForm(options);
     await saveOptions(options);
-    setStatus('初期値に戻したで。');
+    setStatus('初期設定に戻しました。');
   });
 
   byId<HTMLButtonElement>('save-profile-button').addEventListener('click', async () => {
     const name = byId<HTMLInputElement>('profile-name').value.trim();
     if (!name) {
-      setStatus('プロファイル名入れてな。');
+      setStatus('プロファイル名を入力してください。');
       return;
     }
     await upsertProfile(name, readForm());
@@ -183,7 +205,7 @@ async function initialize(): Promise<void> {
   byId<HTMLButtonElement>('apply-profile-button').addEventListener('click', async () => {
     const id = byId<HTMLSelectElement>('profile-select').value;
     if (!id) {
-      setStatus('適用するプロファイル選んでな。');
+      setStatus('適用するプロファイル選択してください。');
       return;
     }
     const profile = (await loadProfiles()).find((item) => item.id === id);
@@ -198,13 +220,13 @@ async function initialize(): Promise<void> {
     if (!id) return;
     await deleteProfile(id);
     await renderProfiles();
-    setStatus('プロファイル消したで。');
+    setStatus('プロファイルを削除しました。');
   });
 
   byId<HTMLButtonElement>('delete-history-button').addEventListener('click', async () => {
     const ids = getSelectedHistoryIds();
     if (ids.length === 0) {
-      setStatus('削除する履歴を選んでな。');
+      setStatus('削除する履歴を選択してください。');
       return;
     }
     await deleteHistoryEntries(ids);
@@ -214,18 +236,18 @@ async function initialize(): Promise<void> {
 
   byId<HTMLButtonElement>('select-all-history-button').addEventListener('click', () => {
     setAllHistorySelection(true);
-    setStatus('履歴を全部選択したで。');
+    setStatus('履歴を全選択しました。');
   });
 
   byId<HTMLButtonElement>('clear-history-selection-button').addEventListener('click', () => {
     setAllHistorySelection(false);
-    setStatus('履歴の選択を全部外したで。');
+    setStatus('履歴の選択を全解除しました。');
   });
 
   byId<HTMLButtonElement>('delete-all-history-button').addEventListener('click', async () => {
     const ids = Array.from(document.querySelectorAll<HTMLInputElement>('[data-history-id]')).map((element) => element.value);
     if (ids.length === 0) {
-      setStatus('消す履歴が無いで。');
+      setStatus('削除対象の履歴がありません。');
       return;
     }
     await deleteHistoryEntries(ids);
