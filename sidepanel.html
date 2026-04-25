@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>note TOC Panel</title>
+    <style>
+      :root { color-scheme: light; --bg:#f6f8fb; --panel:#fff; --text:#1f2937; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --accent-bg:#eff6ff; --warn-bg:#fff7ed; --warn-line:#fed7aa; --warn-text:#9a3412; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--bg); color:var(--text); font-size:13px; }
+      header { position:sticky; top:0; z-index:3; background:rgba(246,248,251,.96); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:12px; }
+      h1 { margin:0 0 8px; font-size:15px; line-height:1.35; }
+      .meta { color:var(--muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; white-space:pre-line; }
+      .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+      button { border:1px solid var(--line); border-radius:10px; background:var(--panel); color:var(--text); cursor:pointer; font-size:12px; padding:8px 10px; }
+      button.primary { border-color:var(--accent); background:var(--accent); color:#fff; }
+      button:disabled { cursor:not-allowed; opacity:.5; }
+      main { padding:10px; }
+      .status { border:1px solid var(--line); border-radius:12px; background:var(--panel); color:var(--muted); line-height:1.6; padding:12px; }
+      .status.warn { background:var(--warn-bg); border-color:var(--warn-line); color:var(--warn-text); }
+      .toc { display:flex; flex-direction:column; gap:4px; }
+      .toc-item { display:grid; grid-template-columns:auto 1fr; gap:8px; align-items:start; border:1px solid transparent; border-radius:10px; background:transparent; padding:8px; text-align:left; width:100%; }
+      .toc-item:hover { border-color:var(--line); background:var(--panel); }
+      .toc-item.active { border-color:var(--accent); background:var(--accent-bg); }
+      .level { border-radius:999px; background:#eef2ff; color:#3730a3; font-size:11px; min-width:28px; padding:2px 6px; text-align:center; }
+      .text { line-height:1.45; overflow-wrap:anywhere; }
+      .h2 { margin-left:0; } .h3 { margin-left:12px; } .h4 { margin-left:24px; } .h5 { margin-left:36px; } .h6 { margin-left:48px; }
+      .small { color:var(--muted); font-size:11px; margin-top:2px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>note TOC Panel</h1>
+      <div id="meta" class="meta">対応ページを確認中...</div>
+      <div class="actions">
+        <button id="refresh" class="primary" type="button">再読込</button>
+        <button id="openModal" type="button">従来モーダル</button>
+      </div>
+    </header>
+    <main>
+      <div id="status" class="status">TOCを読み込んでいます。</div>
+      <div id="toc" class="toc" hidden></div>
+    </main>
+    <script src="dist/sidepanel.js"></script>
+  </body>
+</html>

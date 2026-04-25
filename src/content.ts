@@ -130,16 +130,134 @@ if (window.top === window.self && !window.__NOTE_TOC_EXPORTER_BOOTED__) {
     await runExporter(true);
   }
 
+  let sidePanelLastItems: ExportResult['tocData'] = [];
+  let sidePanelActiveId: string | null = null;
+  let sidePanelScrollListenerAttached = false;
+  let sidePanelMutationObserver: MutationObserver | null = null;
+
+  function isSupportedSidePanelPage(): boolean {
+    return /^https:\/\/note\.com\//.test(location.href) || /^https:\/\/editor\.note\.com\//.test(location.href);
+  }
+
+  function getHeadingElementByTocItem(item: ExportResult['tocData'][number]): HTMLElement | null {
+    if (item.id) {
+      const direct = document.getElementById(item.id);
+      if (direct instanceof HTMLElement) return direct;
+    }
+    const candidates = Array.from(document.querySelectorAll<HTMLElement>(item.level));
+    return candidates.find((element) => (element.textContent ?? '').trim() === item.text) ?? null;
+  }
+
+  function getActiveHeadingIdFromViewport(items: ExportResult['tocData']): string | null {
+    const viewportOffset = 96;
+    let current: string | null = null;
+    for (const item of items) {
+      const element = getHeadingElementByTocItem(item);
+      if (!element) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.top <= viewportOffset) current = item.id;
+      else break;
+    }
+    return current ?? items[0]?.id ?? null;
+  }
+
+  function notifySidePanelActiveHeading(): void {
+    if (sidePanelLastItems.length === 0) return;
+    const nextActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+    if (nextActiveId === sidePanelActiveId) return;
+    sidePanelActiveId = nextActiveId;
+    void chrome.runtime.sendMessage({ type: 'NOTE_TOC_ACTIVE_HEADING_CHANGED', activeId: sidePanelActiveId }).catch(() => undefined);
+  }
+
+  function attachSidePanelScrollSync(): void {
+    if (sidePanelScrollListenerAttached) return;
+    sidePanelScrollListenerAttached = true;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(() => {
+        ticking = false;
+        notifySidePanelActiveHeading();
+      });
+    }, { passive: true });
+  }
+
+  function attachSidePanelMutationObserver(): void {
+    if (sidePanelMutationObserver) return;
+    sidePanelMutationObserver = new MutationObserver(() => notifySidePanelActiveHeading());
+    sidePanelMutationObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
+  async function getSidePanelState(): Promise<{
+    ok: boolean;
+    supported: boolean;
+    url: string;
+    title: string;
+    activeId: string | null;
+    items: ExportResult['tocData'];
+    error?: string;
+  }> {
+    if (!isSupportedSidePanelPage()) {
+      return { ok: true, supported: false, url: location.href, title: document.title, activeId: null, items: [] };
+    }
+    try {
+      const result = await buildExportResult();
+      sidePanelLastItems = result.tocData;
+      attachSidePanelScrollSync();
+      attachSidePanelMutationObserver();
+      sidePanelActiveId = getActiveHeadingIdFromViewport(sidePanelLastItems);
+      return { ok: true, supported: true, url: location.href, title: result.meta.title || document.title, activeId: sidePanelActiveId, items: sidePanelLastItems };
+    } catch (error) {
+      return { ok: false, supported: true, url: location.href, title: document.title, activeId: null, items: [], error: error instanceof Error ? error.message : String(error) };
+    }
+  }
+
+  function jumpToSidePanelItem(id: string | null, index: number | null): void {
+    let target: HTMLElement | null = null;
+    if (id) target = document.getElementById(id);
+    if (!target && Number.isFinite(index ?? NaN)) {
+      const item = sidePanelLastItems[index as number];
+      if (item) target = getHeadingElementByTocItem(item);
+    }
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    sidePanelActiveId = target.id || id;
+    void chrome.runtime.sendMessage({ type: 'NOTE_TOC_ACTIVE_HEADING_CHANGED', activeId: sidePanelActiveId }).catch(() => undefined);
+  }
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type !== 'RUN_NOTE_TOC_EXPORTER') {
-      return false;
+    if (message?.type === 'RUN_NOTE_TOC_EXPORTER') {
+      void runExporter(false, message.optionsOverride)
+        .then(() => sendResponse({ ok: true }))
+        .catch((error) => sendResponse({ ok: false, error: String(error) }));
+      return true;
     }
 
-    void runExporter(false, message.optionsOverride)
-      .then(() => sendResponse({ ok: true }))
-      .catch((error) => sendResponse({ ok: false, error: String(error) }));
+    if (message?.type === 'GET_NOTE_TOC_SIDE_PANEL_STATE') {
+      void getSidePanelState()
+        .then((state) => sendResponse(state))
+        .catch((error) => sendResponse({
+          ok: false,
+          supported: isSupportedSidePanelPage(),
+          url: location.href,
+          title: document.title,
+          activeId: null,
+          items: [],
+          error: error instanceof Error ? error.message : String(error)
+        }));
+      return true;
+    }
 
-    return true;
+    if (message?.type === 'NOTE_TOC_SIDE_PANEL_JUMP_TO') {
+      jumpToSidePanelItem(
+        typeof message.id === 'string' ? message.id : null,
+        typeof message.index === 'number' ? message.index : null
+      );
+      sendResponse({ ok: true });
+      return true;
+    }
+
+    return false;
   });
 
   void maybeAutoRun();

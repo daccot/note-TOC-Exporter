@@ -14,15 +14,19 @@ async function runOnTab(tab: chrome.tabs.Tab, optionsOverride?: Partial<ExportOp
   }
 
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ['dist/content.js']
-    });
+    await ensureContentScript(tab.id);
 
     await chrome.tabs.sendMessage(tab.id, { type: 'RUN_NOTE_TOC_EXPORTER', optionsOverride });
   } catch (error) {
     console.error(LOG_PREFIX, 'Failed to send message to content script', error);
   }
+}
+
+async function ensureContentScript(tabId: number): Promise<void> {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ['dist/content.js']
+  });
 }
 
 async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
@@ -57,6 +61,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === 'ENSURE_NOTE_TOC_CONTENT_SCRIPT') {
+    void (async () => {
+      const tabId = Number(message.tabId);
+      if (!Number.isFinite(tabId)) {
+        sendResponse({ ok: false, error: 'tabId が不正です。' });
+        return;
+      }
+      await ensureContentScript(tabId);
+      sendResponse({ ok: true });
+    })().catch((error) => {
+      sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) });
+    });
+    return true;
+  }
   if (message?.type === 'GET_NOTE_TOC_ACTIVE_TAB_STATE') {
     void getActiveTab()
       .then((tab) => {
@@ -75,3 +93,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   return false;
 });
+
+if (chrome.sidePanel?.setPanelBehavior) {
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error) => {
+    console.warn(LOG_PREFIX, 'Failed to set side panel behavior', error);
+  });
+}
